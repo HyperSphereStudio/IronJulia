@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <LangVersion>11</LangVersion>
+        <DefineConstants>DEBUG2CONSOLE</DefineConstants>
+        <RootNamespace>Runtime</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Antlr4.Runtime.Standard" Version="4.10.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Src\ILCompiler\" />
+      <Folder Include="Src\Impl\" />
+    </ItemGroup>
+</Project>

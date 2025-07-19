@@ -1,0 +1,43 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <OutputType>Library</OutputType>
+    <LangVersion>8.0</LangVersion>
+
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningLevel>5</WarningLevel>
+
+    <Company>Lokad</Company>
+    <Copyright>Copyright © Lokad 2020 - 2022</Copyright>
+
+    <PackageId>Lokad.ILPack</PackageId>
+
+    <AssemblyVersion>0.2.0.0</AssemblyVersion>
+    <FileVersion>0.2.0.0</FileVersion>
+    <PackageVersion>0.2.0.0</PackageVersion>
+    <Version>0.2.0</Version>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Authors>Lokad</Authors>
+    <Description>A library for serializing dynamic assemblies under .NET Standard 2.0.</Description>
+    <PackageProjectUrl>https://github.com/Lokad/ILPack</PackageProjectUrl>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+    <RepositoryUrl>https://github.com/Lokad/ILPack.git</RepositoryUrl>
+    <SignAssembly>True</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\Lokad.ILPack.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Reflection.Emit" Version="4.7.0" />
+    <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.7.0" />
+    <PackageReference Include="System.Reflection.Metadata" Version="6.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\lokad.png" Pack="true" PackagePath="icon.png" />
+    <None Include="..\LICENSE.txt" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

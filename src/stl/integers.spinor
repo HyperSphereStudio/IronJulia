@@ -1,0 +1,45 @@
+data type Bit <: UnsignedInteger end
+
+abstract type Number
+	function add(a::Number, b::Number) end
+	function subtract(a::Number, b::Number) end
+	function multiply(a::Number, b::Number) end
+end
+
+abstract type AbstractInteger <: Number 
+	function basis(a::AbstractInteger) end
+	function signed(a::AbstractInteger) end
+	function rightshift(a::AbstractInteger) end
+	function leftshift(a::AbstractInteger) end
+end
+
+abstract concept UnsignedInteger(ui)
+	requires(ui::AbstractInteger) = signed(ui) == false
+end
+
+abstract concept UnsignedInteger(ui)
+	requires(ui::AbstractInteger) = signed(ui) == true
+end
+
+abstract type AbstractArray
+	function eltype(aa::AbstractArray) end
+	function ndims(aa::AbstractArray) end
+	function length(aa::AbstractArray) end
+	function getindex(aa::AbstractArray, idx) end
+	function setindex!(aa::AbstractArray, value, idx) end
+end
+
+abstract type AbstractBasis <: AbstractArray
+	function getindex(ab::AbstractBasis, n::Integer) end
+end
+abstract type AbstractLinearBasis <: AbstractBasis end
+
+import UInt8  <:  UnsignedInteger end 
+import UInt16 <:  UnsignedInteger end
+import UInt32 <:  UnsignedInteger end
+import UInt64 <:  UnsignedInteger end
+
+import Int8 <: SignedInteger end 
+import Int16 <: SignedInteger end
+import Int32 <: SignedInteger end
+import Int64 <: SignedInteger end

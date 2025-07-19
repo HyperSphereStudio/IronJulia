@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IronJulia", "IronJulia\IronJulia.csproj", "{DA746A3D-A297-4D2D-9E01-23E61C14A44C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sandbox", "Sandbox\Sandbox.csproj", "{43206933-3902-4A2A-A89C-6ADA0973F801}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lokad.ILPack", "ILPack\src\Lokad.ILPack.csproj", "{D967B107-097E-4BC2-8FB4-3ED9ABC1E0A7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", "{2433DCD6-40B0-4EAD-B238-0417CFED0189}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DA746A3D-A297-4D2D-9E01-23E61C14A44C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DA746A3D-A297-4D2D-9E01-23E61C14A44C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DA746A3D-A297-4D2D-9E01-23E61C14A44C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DA746A3D-A297-4D2D-9E01-23E61C14A44C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{43206933-3902-4A2A-A89C-6ADA0973F801}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{43206933-3902-4A2A-A89C-6ADA0973F801}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{43206933-3902-4A2A-A89C-6ADA0973F801}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{43206933-3902-4A2A-A89C-6ADA0973F801}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D967B107-097E-4BC2-8FB4-3ED9ABC1E0A7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D967B107-097E-4BC2-8FB4-3ED9ABC1E0A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D967B107-097E-4BC2-8FB4-3ED9ABC1E0A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D967B107-097E-4BC2-8FB4-3ED9ABC1E0A7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2433DCD6-40B0-4EAD-B238-0417CFED0189}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2433DCD6-40B0-4EAD-B238-0417CFED0189}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2433DCD6-40B0-4EAD-B238-0417CFED0189}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2433DCD6-40B0-4EAD-B238-0417CFED0189}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

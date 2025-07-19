@@ -1,0 +1,61 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.168
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lokad.ILPack", "src\Lokad.ILPack.csproj", "{7E7480A4-D10F-4489-B235-9FF58DD1B554}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lokad.ILPack.Tests", "test\Lokad.ILPack.Tests\Lokad.ILPack.Tests.csproj", "{8647DF26-57C1-465C-8E21-E44617D8EA60}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestSubject", "test\TestSubject\TestSubject.csproj", "{2B12E3D8-796A-4300-AE55-E151D0A129B8}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sandbox", "test\Sandbox\Sandbox.csproj", "{131BC75C-C3FA-4202-AFB2-71B576375064}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SandboxSubject", "test\SandboxSubject\SandboxSubject.csproj", "{07C62161-827E-4E66-96C7-BC0E8C5CB759}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sandbox.", "Sandbox.", "{75C16393-4067-483D-95D1-8234549804AE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0FD46DF8-D77F-41D6-8AFD-AF554EA79396}"
+	ProjectSection(SolutionItems) = preProject
+		LICENSE.txt = LICENSE.txt
+		README.md = README.md
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7E7480A4-D10F-4489-B235-9FF58DD1B554}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7E7480A4-D10F-4489-B235-9FF58DD1B554}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7E7480A4-D10F-4489-B235-9FF58DD1B554}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7E7480A4-D10F-4489-B235-9FF58DD1B554}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8647DF26-57C1-465C-8E21-E44617D8EA60}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8647DF26-57C1-465C-8E21-E44617D8EA60}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8647DF26-57C1-465C-8E21-E44617D8EA60}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8647DF26-57C1-465C-8E21-E44617D8EA60}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2B12E3D8-796A-4300-AE55-E151D0A129B8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2B12E3D8-796A-4300-AE55-E151D0A129B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2B12E3D8-796A-4300-AE55-E151D0A129B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2B12E3D8-796A-4300-AE55-E151D0A129B8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{131BC75C-C3FA-4202-AFB2-71B576375064}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{131BC75C-C3FA-4202-AFB2-71B576375064}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{131BC75C-C3FA-4202-AFB2-71B576375064}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{131BC75C-C3FA-4202-AFB2-71B576375064}.Release|Any CPU.Build.0 = Release|Any CPU
+		{07C62161-827E-4E66-96C7-BC0E8C5CB759}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{07C62161-827E-4E66-96C7-BC0E8C5CB759}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{07C62161-827E-4E66-96C7-BC0E8C5CB759}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{07C62161-827E-4E66-96C7-BC0E8C5CB759}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{131BC75C-C3FA-4202-AFB2-71B576375064} = {75C16393-4067-483D-95D1-8234549804AE}
+		{07C62161-827E-4E66-96C7-BC0E8C5CB759} = {75C16393-4067-483D-95D1-8234549804AE}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A7A07076-50CC-434F-ACAE-6E87A4733F67}
+	EndGlobalSection
+EndGlobal
