@@ -58,6 +58,19 @@ public class NetRuntimeType : Core.Module {
     public Core.Module Module => this;
     public Core.Module? Parent { get; }
     private readonly Dictionary<Base.Symbol, IBinding> _bindingCache = new();
+
+    private static readonly Dictionary<string, Core.Function> NetOps = new() {
+        ["op_Addition"] =  Base.op_Add,
+        ["op_Subtraction"] =  Base.op_Sub,
+        ["op_Multiplication"] =  Base.op_Mul,
+        ["op_Division"] =  Base.op_Div,
+        ["op_LessThan"] =  Base.op_LessThan,
+        ["op_GreaterThan"] =  Base.op_GreaterThan,
+        ["op_LessThanOrEqual"] =  Base.op_LessThanOrEqual,
+        ["op_GreaterThanOrEqual"] =  Base.op_GreaterThanOrEqual,
+        ["op_Equality"] = Base.op_Equality,
+        ["op_Inequality"] = Base.op_InEquality
+    };
     
     public NetRuntimeType(Type source, Core.Module? parent) {
         Source = source;
@@ -65,21 +78,8 @@ public class NetRuntimeType : Core.Module {
         
         //Load certain .net methods into ecosystem that are hard to discover
         foreach (var m in source.GetMethods(BindingFlags.Public | BindingFlags.Static)) {
-            if (m.IsSpecialName && m.Name.StartsWith("op_")) {
-                switch (m.Name) {
-                    case "op_Addition":
-                        Base.op_Add.Methods.Add(new NetMethod(Base.op_Add, m));
-                        break;
-                    case "op_Subtraction":
-                        Base.op_Sub.Methods.Add(new NetMethod(Base.op_Sub, m));
-                        break;
-                    case "op_Multiply":    
-                        Base.op_Mul.Methods.Add(new NetMethod(Base.op_Mul, m));
-                        break;
-                    case "op_Divide":    
-                        Base.op_Div.Methods.Add(new NetMethod(Base.op_Div, m));
-                        break;
-                }
+            if (m.IsSpecialName && NetOps.TryGetValue(m.Name, out var bop)) {
+                bop.AddMethod(new NetMethod(bop, m));
             }
         }
     }
@@ -106,7 +106,7 @@ public class NetRuntimeType : Core.Module {
             if(fattr.HasFlag(FieldAttributes.Static))
                 bf |= BindingFlags.Static;
 
-            List<MethodInfo>? methods = null;
+            List<MethodInfo?>? methods = null;
             
             foreach (var w in Source.GetMember(name, bf)) {
                 switch (w) {

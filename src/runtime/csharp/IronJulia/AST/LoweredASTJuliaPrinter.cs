@@ -6,8 +6,12 @@ using static LoweredJLExpr;
 
 public class LoweredASTJuliaPrinter : NonRecursiveGraphVisitor<ILoweredJLExpr>
 {
+    public struct PrinterBlockState{
+        public bool PrintStatementTypes, IsVisibleBlockDecor, PrintedStatement;
+    }
+    
     public IndentedTextWriter Writer;
-    public bool PrintStatementTypes, IsVisibleBlockDecor;
+    public PrinterBlockState ActiveState;
     public bool IsRootBlock;
     
     protected Dictionary<Variable, Base.Symbol> _activeVariables = new();
@@ -24,47 +28,65 @@ public class LoweredASTJuliaPrinter : NonRecursiveGraphVisitor<ILoweredJLExpr>
         Writer.Indent = 0;
         if (expr is Block)
             IsRootBlock = true;
-        IsVisibleBlockDecor = true;
+        ActiveState.IsVisibleBlockDecor = true;
         base.Visit(expr);
     }
+
+    private void Write(object? o) {
+        Writer.Write(o);
+        ActiveState.PrintedStatement = true;
+    }
+
+    private void WriteLine(object? o) {
+        Writer.WriteLine(o);
+        ActiveState.PrintedStatement = true;
+    }
     
-    public override bool VisitStatesStart(ILoweredJLExpr expr, ref object? data) {
+    public override void VisitStatesStart(ILoweredJLExpr expr, ref object? data, ref uint? nextState) {
         switch (expr) {
+            case BinaryOperatorInvoke:
+                break;
             case Constant ck:
-                Writer.Write(ck.Value);
+                Write(ck.Value);
                 break;
             case Label lbl:
-                Writer.Write("@label ");
-                Writer.Write(lbl.Name);
+                Write("@label ");
+                Write(lbl.Name);
                 break;
             case Goto gt:
-                Writer.Write("@goto ");
-                Writer.Write(gt.Label.Name);
+                Write("@goto ");
+                Write(gt.Label.Name);
                 break;
             case Block:
-                if(IsVisibleBlockDecor)
-                    Writer.WriteLine("begin");
+                if(ActiveState.IsVisibleBlockDecor)
+                    WriteLine("begin");
+                ActiveState.PrintedStatement = false;
                 Writer.Indent++;
-                data = IsVisibleBlockDecor;
+                data = ActiveState;
+                break;
+            case Conditional:
+                Write("if ");
+                ActiveState.IsVisibleBlockDecor = false;
                 break;
             case Assignment asn:
-                Writer.Write(asn.Variable.Name);
-                Writer.Write(" ");
+                Write(asn.Variable.Name);
+                Write(" ");
                 if (asn.IsBinaryCompound) {
                     PushNewVisit(asn.BinaryOperator.Arguments[1]);
-                    Writer.Write(asn.BinaryOperator.Function.Name);
-                    Writer.Write("= ");
-                    return false;
+                    Write(asn.BinaryOperator.Function.Name);
+                    Write("= ");
+                    nextState = null;
+                    return;
                 }
-                Writer.Write("= ");
+                Write("= ");
                 break;
             case FunctionInvoke fi:
-                Writer.Write(fi.Function.Name);
-                Writer.Write("(");
+                Write(fi.Function.Name);
+                Write("(");
                 break;
             case While: 
-                Writer.Write("while ");
-                IsVisibleBlockDecor = false;
+                Write("while ");
+                ActiveState.IsVisibleBlockDecor = false;
                 break;
             case Variable v:
                 var name = v.Name;
@@ -72,11 +94,10 @@ public class LoweredASTJuliaPrinter : NonRecursiveGraphVisitor<ILoweredJLExpr>
                     name = "var" + _activeVariables.Count;
                     _activeVariables[v] = name.Value;
                 }
-                Writer.Write(name);
+                Write(name);
                 break;
             default: throw new NotSupportedException(expr.GetType().Name);
         }
-        return true;
     }
 
     public override void VisitStatesEnd(ILoweredJLExpr expr, ref object? data) {
@@ -85,19 +106,21 @@ public class LoweredASTJuliaPrinter : NonRecursiveGraphVisitor<ILoweredJLExpr>
             case Label:
             case Assignment:
             case Variable:
+            case BinaryOperatorInvoke:
             case Goto:
                 break;
+            case Conditional:
             case While:
-                Writer.Write("end");
+                Write("end");
                 break;
             case FunctionInvoke:
-                Writer.Write(")");
+                Write(")");
                 break;
             case Block bk:
                 Writer.Indent--;
-                IsVisibleBlockDecor = (bool) data!;
-                if(IsVisibleBlockDecor)
-                    Writer.WriteLine("end");
+                ActiveState = (PrinterBlockState) data!;
+                if(ActiveState.IsVisibleBlockDecor)
+                    WriteLine("end");
                 foreach(var v in bk.Variables)
                     _activeVariables.Remove(v);
                 break;
@@ -105,25 +128,34 @@ public class LoweredASTJuliaPrinter : NonRecursiveGraphVisitor<ILoweredJLExpr>
         }
     }
 
-    public override bool AfterStateVisit(ILoweredJLExpr expr, ref object? data, uint? state) {
+    public override void AfterStateVisit(ILoweredJLExpr expr, ref object? data, uint? state, ref uint? nextState) {
         switch (expr) {
             case Constant:
             case Label:
             case Assignment:
             case Variable:
+            case Conditional:
             case Goto:
             case While:
-                break; 
+                break;
+            case BinaryOperatorInvoke boi:
+                if (state == 0) {
+                    Write(" ");
+                    Write(boi.Function.Name);
+                    Write(" ");
+                }
+                break;
             case Block:
-                Writer.WriteLine();
+                if(ActiveState.PrintedStatement)
+                    Writer.WriteLine();
+                ActiveState.PrintedStatement = false;
                 break;
             case FunctionInvoke fi:
                 if(state+1 < fi.Arguments.Length)
-                    Writer.Write(", ");
+                    Write(", ");
                 break;
             default: throw new NotSupportedException(expr.GetType().Name);
         }
-        return true;
     }
 }
 
@@ -131,7 +163,7 @@ public static class ASTUtils {
     public static void PrintJuliaString(this ILoweredJLExpr expr, TextWriter? writer = null) {
         writer ??= Console.Out;
         var visitor = new LoweredASTJuliaPrinter(writer) {
-            PrintStatementTypes = true
+            ActiveState = new(){PrintStatementTypes = true}
         };
         visitor.Print(expr);
     }

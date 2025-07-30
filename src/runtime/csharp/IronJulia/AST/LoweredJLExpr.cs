@@ -1,6 +1,9 @@
+using System.Collections;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using IronJulia.CoreLib;
 using SpinorCompiler.Utils;
 
 namespace IronJulia.AST;
@@ -10,22 +13,33 @@ public static class LoweredJLExpr {
         public Type ReturnType { get; set; }
     }
     
+    
+    
     public class Constant : ILoweredJLExpr {
-        public static readonly Constant Nothing = new(Base.Nothing.BoxedInstance), Int0 = new(new Base.Int(0));
+        private static readonly Dictionary<Base.Any, Constant> _constantCache = new();
         
         public Base.Any Value;
         public Type ReturnType { get => Value.GetType(); set => throw new NotImplementedException(); }
         private Constant(Base.Any value) => Value = value;
 
-        public static Constant Create(Base.Any value) {
-            if (value == Base.Nothing.BoxedInstance)
-                return Nothing;
-            if (value == Int0)
-                return Int0;
-            return new(value);
-        }
+        public static Constant Create(Base.Any value) => _constantCache.TryGetValue(value, out var v) ? v : new(value);
+        public static Constant Create<T>(T value) where T: Base.Any => Create(jlapi.jl_box(value));
         
         public uint? Visit(NonRecursiveGraphVisitor<ILoweredJLExpr> visit, NodeVisitorState<ILoweredJLExpr> state) => null;
+
+        static Constant() {
+            AddToCache(new Base.Int(0));
+            AddToCache(new Base.Int(1));
+            AddToCache(new Base.Int(-1));
+            AddToCache(Base.Bool.True);
+            AddToCache(Base.Bool.False);
+            AddToCache(Base.Nothing.Instance);
+
+            void AddToCache<T>(T value) where T: Base.Any{
+                var k = jlapi.jl_box(value);
+                _constantCache[k] = new(k);
+            }
+        }
     }
 
     public class Label : ILoweredJLExpr {
@@ -45,13 +59,13 @@ public static class LoweredJLExpr {
 
     public class While : ILoweredJLExpr {
         public const uint EvalCondState = 0, EvalBodyState = 1;
-        public readonly Block Conditional;
+        public readonly Block Condition;
         public readonly Block Body;
         public readonly Label Break, Continue;
         public Type ReturnType { get; set; }
         
         internal While(Block parent) {
-            Conditional = parent.CreateBlock();
+            Condition = parent.CreateBlock();
             Body = parent.CreateBlock();
             Break = parent.CreateLabel();
             Continue = parent.CreateLabel();
@@ -60,7 +74,7 @@ public static class LoweredJLExpr {
         public uint? Visit(NonRecursiveGraphVisitor<ILoweredJLExpr> visit, NodeVisitorState<ILoweredJLExpr> state) {
             switch (state.State) {
                 case EvalCondState:
-                    visit.PushNewVisit(Conditional);
+                    visit.PushNewVisit(Condition);
                     return EvalBodyState;
                 case EvalBodyState:
                     visit.PushNewVisit(Body);
@@ -70,23 +84,36 @@ public static class LoweredJLExpr {
         }
     }
 
-    public class If : ILoweredJLExpr {
-        public ILoweredJLExpr IfTrue, Conditional;
+    public class Conditional : ILoweredJLExpr {
+        public const uint EvalCondState = 0, EvalBodyState = 1, EvalElseState = 2;
+        public readonly Block Body;
+        public readonly Block? Condition;
+        public readonly Conditional? Else;
+        
         public Type ReturnType { get; set; }
         
-        private If(ILoweredJLExpr ifTrue, ILoweredJLExpr conditional) {
-            IfTrue = ifTrue;
-            Conditional = conditional;
+        internal Conditional(Block parent, bool condition, bool hasElse) {
+            Body = parent.CreateBlock();
+            if(condition)
+                Condition = parent.CreateBlock();
+            if(hasElse)
+                Else = parent.CreateConditional();
         }
-
-        public static If Create(ILoweredJLExpr ifTrue, ILoweredJLExpr conditional) => new(ifTrue, conditional);
         
         public uint? Visit(NonRecursiveGraphVisitor<ILoweredJLExpr> visit, NodeVisitorState<ILoweredJLExpr> state) {
-            if (state.State == 0) {
-                visit.PushNewVisit(IfTrue);  
-                return 1;
+            switch (state.State) {
+                case EvalCondState:
+                    if(Condition != null)
+                        visit.PushNewVisit(Condition);
+                    return EvalBodyState;
+                case EvalBodyState:
+                    visit.PushNewVisit(Body);
+                    return Else != null ? EvalElseState : null;
+                case EvalElseState:
+                    if(Else != null)
+                        visit.PushNewVisit(Else);
+                    return null;
             }
-            visit.PushNewVisit(Conditional);
             return null;
         }
     }
@@ -147,6 +174,8 @@ public static class LoweredJLExpr {
               };
               return v;
         }
+
+        public Conditional CreateConditional(bool hasCondition = true, bool hasElse = false) => new (this, hasCondition, hasElse);
 
         public uint? Visit(NonRecursiveGraphVisitor<ILoweredJLExpr> visit, NodeVisitorState<ILoweredJLExpr> state){
             if (state.State >= Statements.Count) return null;

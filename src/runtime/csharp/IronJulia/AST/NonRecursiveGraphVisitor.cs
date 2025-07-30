@@ -6,8 +6,8 @@ namespace IronJulia.AST;
 public abstract class NonRecursiveGraphVisitor<T> where T:INodeVisitor<T> {
     public RandomAccessStack<NodeVisitorState<T>> Frames = new();
 
-    public void PushNewVisit(T node, uint state = 0)
-    {
+    public void PushNewVisit(T node, uint state = 0) {
+        Debug.Assert(node != null);
         Frames.Push(new NodeVisitorState<T>
         {
             Node = node,
@@ -16,31 +16,29 @@ public abstract class NonRecursiveGraphVisitor<T> where T:INodeVisitor<T> {
         });
     }
 
-    public abstract bool VisitStatesStart(T expr, ref object? data);
+    public abstract void VisitStatesStart(T expr, ref object? data, ref uint? nextState);
     public abstract void VisitStatesEnd(T expr, ref object? data);
-    public abstract bool AfterStateVisit(T expr, ref object? data, uint? state);
+    public abstract void AfterStateVisit(T expr, ref object? data, uint? state, ref uint? nextState);
 
-    public virtual void Visit(T expr)
-    {
+    public virtual void Visit(T expr) {
         PushNewVisit(expr);
-        while (Frames.Count > 0)
-        {
+        while (Frames.Count > 0) {
             var eidx = Frames.Count - 1;
             var node = Frames[eidx];
             uint? s = null;
+            uint? ns = node.State;
             var iterateNextState = true;
 
-            switch (node.VisitState)
-            {
+            switch (node.VisitState) {
                 case VisitState.VisitStateStart:
-                    if (!VisitStatesStart(node.Node, ref node.Data)) {
+                    VisitStatesStart(node.Node, ref node.Data, ref ns);
+                    
+                    if (ns == null)
                         iterateNextState = false;
-                    }
                     else
                         s = node.Node.Visit(this, node);
 
-                    Frames[eidx] = node with
-                    {
+                    Frames[eidx] = node with {
                         State = s,
                         VisitState = iterateNextState ? VisitState.VisitedState : VisitState.VisitStatesEnd,
                         LastState = node.State
@@ -48,22 +46,23 @@ public abstract class NonRecursiveGraphVisitor<T> where T:INodeVisitor<T> {
                     break;
                 case VisitState.VisitedState:
                     iterateNextState = node.VisitState == VisitState.VisitedState;
-                    iterateNextState &= AfterStateVisit(node.Node, ref node.Data, node.LastState);
-                    iterateNextState &= node.State != null;
+                    AfterStateVisit(node.Node, ref node.Data, node.LastState, ref ns);
+                    node.State = ns;
+                    iterateNextState &= ns != null;
 
                     if (iterateNextState)
                         s = node.Node.Visit(this, node);
 
-                    Frames[eidx] = node with
-                    {
+                    Frames[eidx] = node with {
                         State = s,
                         VisitState = iterateNextState ? VisitState.VisitedState : VisitState.VisitStatesEnd,
-                        LastState = node.State
+                        LastState = ns
                     };
+                    
                     break;
                 case VisitState.VisitStatesEnd:
-                    VisitStatesEnd(node.Node, ref node.Data);
                     Frames.Pop();
+                    VisitStatesEnd(node.Node, ref node.Data);
                     break;
                 default:
                     throw new UnreachableException();

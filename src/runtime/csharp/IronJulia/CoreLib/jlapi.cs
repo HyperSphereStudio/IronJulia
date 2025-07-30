@@ -1,11 +1,25 @@
+using System.Collections;
+using System.Runtime.CompilerServices;
 using IronJulia.Compiler;
 
 namespace IronJulia.CoreLib;
 
 public static class jlapi
 {
+    private static readonly Dictionary<Type, object> _constantCache = new();
+    
     public static Base.Symbol jl_create_sym(string symbol) => symbol;
     public static unsafe Base.Symbol jl_create_sym(char* symbol, int n) => jl_create_sym(new string(symbol, 0, n));
+    public static Base.Any jl_box<T>(T value) where T: Base.Any {
+        if (typeof(T) == typeof(Base.Any))
+            return value;
+        if (_constantCache.TryGetValue(typeof(T), out var cd)) {
+            if (cd is Dictionary<T, Base.Any> d && d.TryGetValue(value, out var k))
+                return k;
+            return (T) cd;
+        }
+        return value;
+    }
     
     public static Base.Any jl_alloc_array_1d(System.Type elType, int nr) {
         return (Base.Any) CachedJuliaInfos.jl_alloc_array_1d_1.MakeGenericMethod(elType).Invoke(null, [nr])!;
@@ -21,5 +35,20 @@ public static class jlapi
     
     public static void jl_array_ptr_1d_push(dynamic array, dynamic value) {
         array.Add(value);
+    }
+
+    static jlapi() {
+        var nintv = new Dictionary<Base.Int, Base.Any>();
+        for (var i = -10; i < 11; i++)
+            nintv[i] = new Base.Int(i);
+        _constantCache[typeof(Base.Int)] = nintv;
+        
+        var boolv = new Dictionary<Base.Bool, Base.Any> {
+            [false] = Base.Bool.False,
+            [true] = Base.Bool.True
+        };
+        _constantCache[typeof(Base.Bool)] = boolv;
+        
+        _constantCache[typeof(Base.Nothing)] = Base.Nothing.Instance;
     }
 }

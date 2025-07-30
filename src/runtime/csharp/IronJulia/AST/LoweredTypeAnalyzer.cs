@@ -10,11 +10,12 @@ public class LoweredTypeAnalyzer : NonRecursiveGraphVisitor<ILoweredJLExpr> {
         Visit(expr);
     }
     
-    public override bool VisitStatesStart(ILoweredJLExpr expr, ref object? data) {
+    public override void VisitStatesStart(ILoweredJLExpr expr, ref object? data, ref uint? nextState) {
         switch (expr) {
             case Block:
             case Assignment:
             case Goto:
+            case Conditional:
             case Variable:
             case Constant:
             case Label:
@@ -24,16 +25,15 @@ public class LoweredTypeAnalyzer : NonRecursiveGraphVisitor<ILoweredJLExpr> {
             default:
                 throw new NotSupportedException(expr.GetType().Name);
         }
-        return true;
     }
 
     public override void VisitStatesEnd(ILoweredJLExpr expr, ref object? data) {
         switch (expr) {
             case Assignment asn:
             case While:
+            case Conditional:
             case Block:
                 break;
-            
             case Label:
             case Goto:
                 return;
@@ -54,12 +54,13 @@ public class LoweredTypeAnalyzer : NonRecursiveGraphVisitor<ILoweredJLExpr> {
         expr.ReturnType = _lastType;
     }
 
-    public override bool AfterStateVisit(ILoweredJLExpr expr, ref object? data, uint? state) {
+    public override void AfterStateVisit(ILoweredJLExpr expr, ref object? data, uint? state, ref uint? nextState) {
         switch (expr) {
             case Assignment:
             case While:
             case Block:
             case Label:
+            case Conditional:
             case Goto:
             case FunctionInvoke:
             case Constant:
@@ -69,6 +70,5 @@ public class LoweredTypeAnalyzer : NonRecursiveGraphVisitor<ILoweredJLExpr> {
                 throw new NotSupportedException(expr.GetType().Name);
         }
 
-        return true;
     }
 }

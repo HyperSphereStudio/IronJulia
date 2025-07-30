@@ -5,10 +5,10 @@ namespace IronJulia.CoreLib.Interop;
 
 public class NetMethod : Core.Method{
     public override Type ReturnType => Info.ReturnType;
-    public readonly MethodInfo Info;
+    public readonly MethodInfo? Info;
     public ReadOnlySpan<ParameterInfo> ParameterSpan => GetParametersAsSpan(Info);
 
-    public NetMethod(Core.Function f, MethodInfo info) : base(f) {
+    public NetMethod(Core.Function f, MethodInfo? info) : base(f) {
         Info = info;
         foreach (var p in ParameterSpan)
             Specialization += JuliaTypeSpecializer.GetTypeSpecialization(p.ParameterType);
@@ -39,7 +39,7 @@ public class NetMethod : Core.Method{
     }
 
     [UnsafeAccessor(UnsafeAccessorKind.Method)]
-    private static extern ReadOnlySpan<ParameterInfo> GetParametersAsSpan(MethodBase info);
+    private static extern ReadOnlySpan<ParameterInfo> GetParametersAsSpan(MethodBase? info);
     
     public override object? Invoke(Span<object?> args, Span<object?> kargs, Span<string> knames) {
         var pspan = ParameterSpan;

@@ -70,8 +70,7 @@ public static class JuliaTypeSpecializer
     }
 }
 
-public enum MethodToCallSiteMatch
-{
+public enum MethodToCallSiteMatch {
     Partial,
     Exact,
     NoMatch
@@ -84,18 +83,31 @@ public partial struct Core
         public Core.Module Module { get; }
         public FieldAttributes Attributes => FieldAttributes.Public | FieldAttributes.Static | FieldAttributes.InitOnly;
         public Type BindingType => typeof(Function);
-        public SortedSet<Method> Methods { get; }
-
+        internal SortedSet<Method> MethodSet { get; }
+        public ICollection<Method> Methods => MethodSet;
+        
         public Function(Base.Symbol name, Module module) {
             Name = name;
             Module = module;
             var mts = new SortedSet<Method>(MethodComparer.Instance);
-            Methods = mts;
+            MethodSet = mts;
+        }
+
+        public void AddMethod(Method m) {
+            lock (MethodSet) {
+                m.UniqueID = MethodSet.Count;
+                MethodSet.Add(m);
+            }
         }
 
         internal class MethodComparer : IComparer<Method> {
             public static readonly MethodComparer Instance = new();
-            public int Compare(Method? x, Method? y) => x!.Specialization.CompareTo(y!.Specialization);
+            public int Compare(Method? x, Method? y) {
+                var c = x!.Specialization.CompareTo(y!.Specialization);
+                if(c == 0 && !ReferenceEquals(x, y))
+                    return x.UniqueID.CompareTo(y.UniqueID);
+                return c;
+            }
         }
 
         public object? GetValue(object? instance) => this;
@@ -104,18 +116,19 @@ public partial struct Core
         public object? Invoke(Callsite site) {
             var nm = SelectMethod(site);
             if (nm == null)
-                throw new Exception("Unable to find method");
+                throw new Exception("Unable to find method for " + Name + " given callsite");
             return nm.Invoke(site.Values.Span, site.KeyValue.Span, site.KeyArgNames.Span);
         }
 
-        public Method? SelectMethod(Callsite site)
-        {
+        public Method? SelectMethod(Callsite site) {
             var at = site.ValueTypes.Span;
             var kat = site.KeyValueTypes.Span;
             var kn = site.KeyArgNames.Span;
-            foreach (var m in Methods) {
-                if (m.Match(at, kat, kn) == MethodToCallSiteMatch.Exact)
-                    return m;
+            lock (MethodSet) {
+                foreach (var m in MethodSet) {
+                    if (m.Match(at, kat, kn) == MethodToCallSiteMatch.Exact)
+                        return m;
+                }
             }
             return null;
         }
@@ -124,6 +137,7 @@ public partial struct Core
     public abstract class Method(Function function) : Base.Any {
         public readonly Function Function = function;
         public int Specialization { get; protected set; }
+        internal int UniqueID { get; set; }
         public abstract Type ReturnType { get; }
         public abstract MethodToCallSiteMatch Match(Span<Type> argTypes, Span<Type> kargTypes, Span<string> knames);
         public abstract object? Invoke(Span<object?> args, Span<object?> kargs, Span<string> knames);

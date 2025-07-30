@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.ObjectPool;
 
@@ -9,7 +10,7 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
 {
     private readonly HashSet<ILoweredJLExpr> _activeSet = new();
     public readonly Dictionary<Variable, object?> Vars = new();
-    private readonly Dictionary<Label, int> _labels = new();
+    private readonly Dictionary<Label, (int FrameIndex, uint? BlockInstrIndex)> _labels = new();
     private object? _lastValue;
     private readonly DefaultObjectPool<Callsite> _callsitePool = new(new DefaultPooledObjectPolicy<Callsite>());
 
@@ -24,20 +25,24 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
         return _lastValue;
     }
     
-    public override bool VisitStatesStart(ILoweredJLExpr expr, ref object? data) {
+    public override void VisitStatesStart(ILoweredJLExpr expr, ref object? data, ref uint? nextState) {
+        
         if (!_activeSet.Add(expr))
             throw new NotSupportedException("Cannot recursively visit the same node!");
         switch (expr) {
-            case Block:
             case Assignment:
             case Goto:
             case Variable:
+            case While:
+            case Conditional:
             case Constant:
                 break;
-            case While:
+            case Block:
+                _lastValue = null;
                 break;
             case Label lb:
-                _labels.Add(lb, Frames.Count);
+                Debug.Assert(Frames[^2].Node is Block);
+                _labels.Add(lb, (Frames.Count - 1, Frames[^2].LastState));
                 break;
             case FunctionInvoke:
                 data = _callsitePool.Get();
@@ -45,7 +50,6 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
             default:
                 throw new NotSupportedException(expr.GetType().Name);
         }
-        return true;
     }
 
     
@@ -71,6 +75,7 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
     public override void VisitStatesEnd(ILoweredJLExpr expr, ref object? data) {
         _activeSet.Remove(expr);
         switch (expr) {
+            case Conditional:
             case While:
             case Label:
                 break;
@@ -94,25 +99,52 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
                 break;
             case Goto gt:
                 var lblState = _labels[gt.Label];
-                while (Frames.Count > lblState)    //Go back to label frame
+                
+                //Pop until returns to last valid frame
+                while (Frames.Count > lblState.FrameIndex)
                     UndoExpr(Frames.Pop().Node);
+
+                var activeFrame = Frames.Peek();
+                var activeBlock = (Block) activeFrame.Node;
+                for (var i = activeFrame.LastState!.Value; i > lblState.BlockInstrIndex; i--) {
+                    UndoExpr(activeBlock.Statements[(int) i]); //Walk backwards the block
+                }
+                
+                Frames[^1] = activeFrame with {
+                    State = lblState.BlockInstrIndex + 1, LastState = lblState.BlockInstrIndex!.Value
+                };
+                
                 break;
             default:
                 throw new NotSupportedException(expr.GetType().Name);
         }
-        
     }
 
-    public bool TryReadBoolean([NotNullWhen(true)] out bool? b) {
-        if (_lastValue is Base.Bool bv) {
-            b = bv.Value;
-            return true;
+    private object? ConvertTo(object? v, Type t) {
+        if (v == null) {
+            if (t == typeof(Base.Nothing))
+                return Base.Nothing.Instance;
+            throw new Exception("Unable to convert null to " + t);
         }
-        b = null;
-        return false;
+        if(v.GetType().IsAssignableTo(t))
+            return v;
+        
+        var cs = _callsitePool.Get();
+        cs.AddArg(t);
+        cs.AddArg(v);
+        var o = Base.convert.Invoke(cs);
+        cs.Reset();
+        _callsitePool.Return(cs);
+        return o;
     }
 
-    public override bool AfterStateVisit(ILoweredJLExpr expr, ref object? data, uint? state) {
+    public bool ReadBoolean() {
+        if (_lastValue is bool v)
+            return v;
+        return ((Base.Bool) ConvertTo(_lastValue, typeof(Base.Bool))!).Value;
+    }
+
+    public override void AfterStateVisit(ILoweredJLExpr expr, ref object? data, uint? state, ref uint? nextState) {
         switch (expr) {
             case Block:
             case Assignment:
@@ -121,13 +153,17 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
             case Variable:
             case Constant:
                 break;
+            case Conditional c:
+                if (state == Conditional.EvalCondState) {
+                    nextState = ReadBoolean() ? Conditional.EvalBodyState : (c.Else != null ? Conditional.EvalElseState : null);
+                }
+                break;
             case While:
                 if (state == While.EvalCondState) {
-                    if (!TryReadBoolean(out var v))
-                        throw new NotSupportedException("Conditional in Loop Is Non Boolean!");
-                    if (!v.Value)
-                        return false;
-                    
+                    if (!ReadBoolean()) {
+                        nextState = null;
+                        return;
+                    }
                     //Repeat this block, note that the previous node is going to be a Block Expr.
                     var f = Frames[^2];
                     Frames[^2] = f with { State = f.LastState, LastState = f.LastState - 1 };      
@@ -140,6 +176,5 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
             default:
                 throw new NotSupportedException(expr.GetType().Name);
         }
-        return true;
     }
 }
