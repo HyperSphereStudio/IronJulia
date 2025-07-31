@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
@@ -5,11 +6,12 @@ namespace IronJulia.CoreLib.Interop;
 
 public class NetMethod : Core.Method{
     public override Type ReturnType => Info.ReturnType;
-    public readonly MethodInfo? Info;
+    public readonly MethodInfo Info;
     public ReadOnlySpan<ParameterInfo> ParameterSpan => GetParametersAsSpan(Info);
 
-    public NetMethod(Core.Function f, MethodInfo? info) : base(f) {
+    public NetMethod(Core.Function f, MethodInfo info) : base(f) {
         Info = info;
+        Debug.Assert(Info != null);
         foreach (var p in ParameterSpan)
             Specialization += JuliaTypeSpecializer.GetTypeSpecialization(p.ParameterType);
     }
@@ -45,6 +47,7 @@ public class NetMethod : Core.Method{
         var pspan = ParameterSpan;
         var fullArgs = new object?[pspan.Length];
         var fargs = fullArgs.AsSpan();
+        
         foreach (var p in ParameterSpan) {
             var pidx = knames!.IndexOf(p.Name);
             if (pidx != -1)
@@ -60,6 +63,10 @@ public class NetMethod : Core.Method{
             }
             fargs = fargs[1..];  //Next
         }
+        
         return Info.Invoke(null, fullArgs);
     }
+
+    public override Delegate CreateDelegate(Type t) => Info.CreateDelegate(t);
+    public override T CreateDelegate<T>() => Info.CreateDelegate<T>();
 }

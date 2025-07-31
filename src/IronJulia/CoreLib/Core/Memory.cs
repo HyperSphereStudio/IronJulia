@@ -12,9 +12,11 @@ public partial struct Core
     public struct CPU : AddrSpace<CPU>;
     
     public interface AbstractArray : Any;
-    public interface AbstractArray<T> : AbstractArray, ICollection<T>;
+    public interface AbstractArray<T> : AbstractArray, IEnumerable<T>;
     public interface AbstractArray<T, N> : AbstractArray<T> where N : Val<Int>;
-
+    public interface AbstractVector : AbstractArray;
+    public interface AbstractVector<T> : AbstractVector, AbstractArray<T, Vals.Int1>;
+    
     public interface DenseArray : AbstractArray;
     public interface DenseArray<T> : DenseArray, AbstractArray<T>;
     public interface DenseArray<T, N> : DenseArray<T>, AbstractArray<T, N> where N : Val<Int>;
@@ -128,7 +130,7 @@ public partial struct Core
 
     public interface Array : DenseArray, IEnumerable;
     public interface Array<T> : DenseArray<T>, Array;
-    public class Array<T, N, TT> : Array<T>, DenseArray<T, N>
+    public class Array<T, N, TT> : Array<T>, DenseArray<T, N>,  ICollection<T>
         where N : Val<Int> where TT : ITuple {
         
         public SimpleVector<T> vec;

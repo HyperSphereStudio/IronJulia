@@ -14,6 +14,15 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
     private object? _lastValue;
     private readonly DefaultObjectPool<Callsite> _callsitePool = new(new DefaultPooledObjectPolicy<Callsite>());
 
+    public void PrintActiveVariables(TextWriter? textWriter = null) {
+        textWriter ??= Console.Out;
+        foreach(var v in Vars){
+            textWriter.Write(v.Key.Name);
+            textWriter.Write(" = ");
+            textWriter.WriteLine(v.Value);
+        }
+    }
+    
     public object? Interpret(Block expr, bool reset) {
         if (reset) {
             Vars.Clear();
@@ -26,7 +35,6 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
     }
     
     public override void VisitStatesStart(ILoweredJLExpr expr, ref object? data, ref uint? nextState) {
-        
         if (!_activeSet.Add(expr))
             throw new NotSupportedException("Cannot recursively visit the same node!");
         switch (expr) {
@@ -34,6 +42,7 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
             case Goto:
             case Variable:
             case While:
+            case For:
             case Conditional:
             case Constant:
                 break;
@@ -57,6 +66,9 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
     private void UndoExpr(ILoweredJLExpr expr) {
         _activeSet.Remove(expr);
         switch (expr) {
+            case For fr:
+                Vars.Remove(fr.State); //Exposed to block scope
+                break;
             case Label lbl:
                 _labels.Remove(lbl);
                 break;
@@ -67,7 +79,7 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
                 foreach(var lbl in bk.Labels)
                     _labels.Remove(lbl);
                 foreach(var v in bk.Variables)
-                    Vars.Remove(v);
+                    Vars.Remove(v.Value);
                 break;
         }
     }
@@ -77,6 +89,7 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
         switch (expr) {
             case Conditional:
             case While:
+            case For:
             case Label:
                 break;
             case Block bk:
@@ -164,9 +177,29 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
                         nextState = null;
                         return;
                     }
-                    //Repeat this block, note that the previous node is going to be a Block Expr.
+           
                     var f = Frames[^2];
-                    Frames[^2] = f with { State = f.LastState, LastState = f.LastState - 1 };      
+                    Debug.Assert(f.Node is Block);
+                    Frames[^2] = f with { State = f.LastState, LastState = f.LastState - 1 }; //goto condition after body
+                }
+                break;
+            case For fl:
+                switch (state) {
+                    case For.EvalInitialization:
+                        Vars[fl.State] = _lastValue;       //state = iterate(iterable)
+                        break;
+                    case For.EvalCondState when ReferenceEquals(_lastValue, Base.Nothing.Instance): // state !== nothing
+                        nextState = null;
+                        return;
+                    case For.EvalCondState: {
+                        var f = Frames[^2];
+                        Debug.Assert(f.Node is Block);
+                        Frames[^2] = f with { State = f.LastState, LastState = f.LastState - 1 }; //goto condition after body
+                        break;
+                    }
+                    case For.EvalNextState:
+                        Vars[fl.State] = _lastValue;       //state = iterate(iterable, state)
+                        break;
                 }
                 break;
             case FunctionInvoke:

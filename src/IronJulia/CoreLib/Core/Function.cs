@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Reflection;
 using System.Runtime.InteropServices.JavaScript;
 using IronJulia.CoreLib.Interop;
+using Microsoft.Extensions.ObjectPool;
 using SpinorCompiler.Utils;
 
 public static class JuliaTypeSpecializer
@@ -117,7 +118,7 @@ public partial struct Core
             var nm = SelectMethod(site);
             if (nm == null)
                 throw new Exception("Unable to find method for " + Name + " given callsite");
-            return nm.Invoke(site.Values.Span, site.KeyValue.Span, site.KeyArgNames.Span);
+            return nm.Invoke(site);
         }
 
         public Method? SelectMethod(Callsite site) {
@@ -132,6 +133,7 @@ public partial struct Core
             }
             return null;
         }
+        
     }
 
     public abstract class Method(Function function) : Base.Any {
@@ -141,10 +143,15 @@ public partial struct Core
         public abstract Type ReturnType { get; }
         public abstract MethodToCallSiteMatch Match(Span<Type> argTypes, Span<Type> kargTypes, Span<string> knames);
         public abstract object? Invoke(Span<object?> args, Span<object?> kargs, Span<string> knames);
+        public object? Invoke(Callsite site) => Invoke(site.Values.Span, site.KeyValue.Span, site.KeyArgNames.Span);
+       
+        public abstract Delegate CreateDelegate(Type t);
+        public abstract T CreateDelegate<T>() where T: Delegate;
     }
 }
 
 public class Callsite {
+    public static readonly DefaultObjectPool<Callsite> SharedPool = new(new DefaultPooledObjectPolicy<Callsite>());
     internal InlinedList<string> KeyArgNames = new();
     internal InlinedList<object?> KeyValue = new();
     internal InlinedList<object?> Values = new();

@@ -13,8 +13,6 @@ public static class LoweredJLExpr {
         public Type ReturnType { get; set; }
     }
     
-    
-    
     public class Constant : ILoweredJLExpr {
         private static readonly Dictionary<Base.Any, Constant> _constantCache = new();
         
@@ -83,6 +81,40 @@ public static class LoweredJLExpr {
             return null;
         }
     }
+    
+    public class For : ILoweredJLExpr {
+        public const uint EvalInitialization = 0, EvalCondState = 1, EvalBodyState = 2, EvalNextState = 3;
+        public readonly Block Iterable, Body;
+        public FunctionInvoke Initialization, IterateNext;
+        public readonly Variable State;
+        public Type ReturnType { get; set; }
+        
+        internal For(Block parent) {
+            Body = parent.CreateBlock();
+            State = parent.CreateVariable(typeof(Base.Any), "state");
+            Iterable = parent.CreateBlock();
+            Initialization = FunctionInvoke.Create(Base.iterate, [Iterable]);
+            IterateNext = FunctionInvoke.Create(Base.iterate, [Iterable, State]);
+        }
+
+        public uint? Visit(NonRecursiveGraphVisitor<ILoweredJLExpr> visit, NodeVisitorState<ILoweredJLExpr> state) {
+            switch (state.State) {
+                case EvalInitialization:
+                    visit.PushNewVisit(Initialization);
+                    return EvalCondState;
+                case EvalCondState:  //Builtin state !== nothing
+                    return EvalBodyState;
+                case EvalBodyState:
+                    visit.PushNewVisit(Body);
+                    return EvalNextState;
+                case EvalNextState:
+                    visit.PushNewVisit(IterateNext);
+                    return null;
+            }
+            return null;
+        }
+        
+    }
 
     public class Conditional : ILoweredJLExpr {
         public const uint EvalCondState = 0, EvalBodyState = 1, EvalElseState = 2;
@@ -135,24 +167,21 @@ public static class LoweredJLExpr {
     
     public class Block : ILoweredJLExpr {
         public readonly Block? Parent;
-        public readonly List<Variable> Variables;
-        public readonly List<ILoweredJLExpr> Statements;
-        public readonly List<Label> Labels;
+        public readonly Dictionary<Base.Symbol, Variable> Variables = [];
+        public readonly List<ILoweredJLExpr> Statements = [];
+        public readonly List<Label> Labels = [];
         public System.Type ReturnType { get; set; }
 
-        private Block(Block? parent, List<Variable> variables) {
+        private Block(Block? parent) {
             Parent = parent;
-            Variables = variables;
-            Statements = new();
-            Labels = new();
         }
         
         public static Block CreateRootBlock() {
-            return new(null, new());
+            return new(null);
         }
 
-        public Block CreateBlock() => new(this, new());
-
+        public Block CreateBlock() => new(this);
+        
         public Label CreateLabel(Base.Symbol? name = null) {
             var lbl = Label.Create(name);
             Labels.Add(lbl);
@@ -160,18 +189,27 @@ public static class LoweredJLExpr {
         }
 
         public While CreateWhile() => new (this);
+        public For CreateFor() => new(this);
         
-        public Variable? FindVariableInScope(Base.Symbol name, bool allscopes = false) {
-            var v = Variables.FirstOrDefault(v => v.Name == name);
-            if (v != null || !allscopes)
+        public Variable? FindVariableInScope(Base.Symbol name, bool allScopes = false) {
+            if (Variables.TryGetValue(name, out var v) || !allScopes)
                 return v;
-            return Parent.FindVariableInScope(name, true);
+            return Parent!.FindVariableInScope(name, true);
         }
         
         public Variable CreateVariable(Type bindingType, Base.Symbol? name = null) {
-              var v = new Variable(bindingType, this) {
-                  Name = name
-              };
+              var i = 0;
+              var rootName = name ?? "var";
+              name ??= rootName;
+              
+              while (Variables.ContainsKey(name.Value)) {
+                  Console.WriteLine(name);
+                  name = rootName.Value + i;
+                  i++;
+              }
+            
+              var v = new Variable(bindingType, this, name.Value);
+              Variables[name.Value] = v;
               return v;
         }
 
@@ -185,14 +223,15 @@ public static class LoweredJLExpr {
     }
 
     public class Variable : ILoweredJLExpr{
-        public Base.Symbol? Name;
-        public Block Parent;
+        public readonly Base.Symbol Name;
+        public readonly Block Parent;
         public Type ReturnType { get; set; }
 
         public uint? Visit(NonRecursiveGraphVisitor<ILoweredJLExpr> visit, NodeVisitorState<ILoweredJLExpr> state) => null;
-        internal Variable(Type returnType, Block parent) {
+        internal Variable(Type returnType, Block parent, Base.Symbol name) {
             ReturnType = returnType;
             Parent = parent;
+            Name = name;
         }
     }
 

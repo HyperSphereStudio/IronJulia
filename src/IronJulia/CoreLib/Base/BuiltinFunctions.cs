@@ -16,6 +16,10 @@ public partial struct Base {
     public static readonly Core.Function op_InEquality = new("!=", m_Base);
     public static readonly Core.Function convert = new("convert", m_Base);
     public static readonly Core.Function println = new("println", m_Base);
+    public static readonly Core.Function iterate = new("iterate", m_Base);
+    public static bool StrictCompare<T1, T2>(T1? a, T2? b) {
+        return typeof(T1) == typeof(T2) && (a?.Equals(b) ?? false);
+    }
     
     static Base() {
         foreach (var ty in typeof(Base).GetNestedTypes()) {
@@ -23,5 +27,6 @@ public partial struct Base {
         }
         m_Base.AddBinding("println", println);
         println.Methods.Add(new NetMethod(println, typeof(Console).GetMethod("WriteLine", BindingFlags.Public|BindingFlags.Static, [typeof(object)])!));
+        
     }
 }

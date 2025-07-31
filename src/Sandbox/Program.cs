@@ -3,10 +3,19 @@ using IronJulia.CoreLib;
 using IronJulia.CoreLib.Interop;
 using static IronJulia.AST.LoweredJLExpr;
 
+//RangeTests();
 ExprTests();
 //NativeArrayTests();
 //JuliaMDArrayTests();
 
+
+static void RangeTests() {
+    Console.WriteLine("==== Range Tests ====");
+    
+    Console.WriteLine("println(1:10)");
+    var ur = new Core.UnitRange<Base.Int>(1, 10);
+    Console.WriteLine(string.Join(", ", ur));
+}
 
 /*
  ==== Matrix{Int} Tests ====
@@ -57,7 +66,7 @@ begin
     j = 1
     @label top
     i = 0
-    while i < 5
+    for i in 1:10
         Test(i, 3, j)
         i += 1
     end
@@ -83,17 +92,15 @@ static void ExprTests() {
     Console.WriteLine("==== EXPR TEST ====");
     //Expose the Net Metadata as a Julia Module
     var cMod = (Core.Module) new NetRuntimeType(typeof(MyClass), null);
-
     var blk = Block.CreateRootBlock();
 
 /*
-
 j = 1
 
 @label top
 i = 0
 
-while i < 5
+for i in 1:10
     PrintAdd(i, 3, j)
     i += 1
 end
@@ -115,7 +122,7 @@ j
     blk.Statements.Add(Assignment.Create(i, Constant.Create(new Base.Int(0))));  //i = 0
     
     var loop = blk.CreateWhile();
-    
+  
     loop.Condition.Statements.Add(
         BinaryOperatorInvoke.Create(Base.op_LessThan, 
         i, Constant.Create(new Base.Int(5))));  //i < 5
@@ -137,11 +144,13 @@ j
     
     blk.Statements.Add(ifStmt);
     blk.Statements.Add(j);
-
-    blk.PrintJuliaString();
     
-    Console.WriteLine(new LoweredASTInterpreter().Interpret(blk, true));
+    blk.PrintJuliaString();
+
+    var itp = new LoweredASTInterpreter();
+    Console.WriteLine(itp.Interpret(blk, true));
     Console.WriteLine();
+    
     Console.WriteLine();
 }
 

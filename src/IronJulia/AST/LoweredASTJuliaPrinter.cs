@@ -14,15 +14,12 @@ public class LoweredASTJuliaPrinter : NonRecursiveGraphVisitor<ILoweredJLExpr>
     public PrinterBlockState ActiveState;
     public bool IsRootBlock;
     
-    protected Dictionary<Variable, Base.Symbol> _activeVariables = new();
-    
     public LoweredASTJuliaPrinter(TextWriter tw) {
         Writer = new IndentedTextWriter(tw);
     }
 
     public void Print(ILoweredJLExpr expr, bool reset = true) {
         if (reset) {
-            _activeVariables.Clear();
             Writer.Indent = 0;
         }
         Writer.Indent = 0;
@@ -88,13 +85,12 @@ public class LoweredASTJuliaPrinter : NonRecursiveGraphVisitor<ILoweredJLExpr>
                 Write("while ");
                 ActiveState.IsVisibleBlockDecor = false;
                 break;
+            case For: 
+                Write("for ");
+                ActiveState.IsVisibleBlockDecor = false;
+                break;
             case Variable v:
-                var name = v.Name;
-                if (!name.HasValue && !_activeVariables.TryGetValue(v, out var nv)) {
-                    name = "var" + _activeVariables.Count;
-                    _activeVariables[v] = name.Value;
-                }
-                Write(name);
+                Write(v.Name);
                 break;
             default: throw new NotSupportedException(expr.GetType().Name);
         }
@@ -110,6 +106,7 @@ public class LoweredASTJuliaPrinter : NonRecursiveGraphVisitor<ILoweredJLExpr>
             case Goto:
                 break;
             case Conditional:
+            case For:
             case While:
                 Write("end");
                 break;
@@ -121,8 +118,6 @@ public class LoweredASTJuliaPrinter : NonRecursiveGraphVisitor<ILoweredJLExpr>
                 ActiveState = (PrinterBlockState) data!;
                 if(ActiveState.IsVisibleBlockDecor)
                     WriteLine("end");
-                foreach(var v in bk.Variables)
-                    _activeVariables.Remove(v);
                 break;
             default: throw new NotSupportedException(expr.GetType().Name);
         }
@@ -136,6 +131,7 @@ public class LoweredASTJuliaPrinter : NonRecursiveGraphVisitor<ILoweredJLExpr>
             case Variable:
             case Conditional:
             case Goto:
+            case For:
             case While:
                 break;
             case BinaryOperatorInvoke boi:
