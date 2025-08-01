@@ -3,7 +3,7 @@ using System.Reflection;
 using IronJulia.CoreLib.Interop;
 
 public partial struct Core {
-    public interface Module : IBinding {
+    public interface Module : IBinding, Base.Any {
         public Module? Parent { get; }
         Core.Module IBinding.Module => this;
         Type IBinding.BindingType => typeof(NetRuntimeNamespaceModule);
@@ -23,7 +23,7 @@ public partial struct Core {
         public void setglobal(object? value, params Span<Base.Symbol> names) {
             if (!TryGetBinding(out var b, FieldAttributes.Public | FieldAttributes.Static, names))
                 throw new KeyNotFoundException(string.Join(".", names.ToArray()));
-            b.SetValue(value, null);
+            b.SetValue(null, value);
         }
         
         public bool TryGetBinding([NotNullWhen(true)] out IBinding? value, FieldAttributes fattr, params Span<Base.Symbol> names);
@@ -86,3 +86,5 @@ namespace IronJulia.CoreLib {
         }
     }
 }
+
+

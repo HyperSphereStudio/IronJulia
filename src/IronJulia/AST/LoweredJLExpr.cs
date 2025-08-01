@@ -4,6 +4,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using IronJulia.CoreLib;
+using IronJulia.CoreLib.Interop;
 using SpinorCompiler.Utils;
 
 namespace IronJulia.AST;
@@ -170,15 +171,18 @@ public static class LoweredJLExpr {
         public readonly Dictionary<Base.Symbol, Variable> Variables = [];
         public readonly List<ILoweredJLExpr> Statements = [];
         public readonly List<Label> Labels = [];
-        public System.Type ReturnType { get; set; }
+        public Type ReturnType { get; set; }
 
-        private Block(Block? parent) {
+        protected Block(Block? parent) {
             Parent = parent;
         }
-        
-        public static Block CreateRootBlock() {
-            return new(null);
+
+        public T Append<T>(T t) where T : ILoweredJLExpr {
+            Statements.Add(t);
+            return t;
         }
+
+        public static Block Create() => new(null);
 
         public Block CreateBlock() => new(this);
         
@@ -232,6 +236,56 @@ public static class LoweredJLExpr {
             ReturnType = returnType;
             Parent = parent;
             Name = name;
+        }
+    }
+
+    //Optimized GetField
+    public class GetProperty : ILoweredJLExpr
+    {
+        public const int EvalInstance = 0;
+        public readonly ILoweredJLExpr Instance;
+        public readonly Base.Symbol Name;
+        public Type ReturnType { get; set; }
+
+        internal GetProperty(ILoweredJLExpr instance, Base.Symbol name) {
+            Instance = instance;
+            Name = name;
+        }
+        
+        public static GetProperty Create(ILoweredJLExpr instance, Base.Symbol name) => new(instance, name);
+        
+        public uint? Visit(NonRecursiveGraphVisitor<ILoweredJLExpr> visit, NodeVisitorState<ILoweredJLExpr> state) {
+            if (state.State == EvalInstance) 
+                visit.PushNewVisit(Instance);
+            return null;
+        }
+    }
+    
+    //Optimized SetProperty
+    public class SetProperty : ILoweredJLExpr {
+        public const int EvalValue = 0, EvalInstance = 1;
+        public readonly ILoweredJLExpr Instance, Value;
+        public readonly Base.Symbol Name;
+        public Type ReturnType { get; set; }
+
+        internal SetProperty(ILoweredJLExpr instance, Base.Symbol name, ILoweredJLExpr value) {
+            Instance = instance;
+            Name = name;
+            Value = value;
+        }
+
+        public static SetProperty Create(ILoweredJLExpr instance, Base.Symbol name, ILoweredJLExpr value) => new(instance, name, value);
+        
+        public uint? Visit(NonRecursiveGraphVisitor<ILoweredJLExpr> visit, NodeVisitorState<ILoweredJLExpr> state) {
+            switch (state.State) {
+                case EvalValue:
+                    visit.PushNewVisit(Value);
+                    return EvalInstance;
+                case EvalInstance:
+                    visit.PushNewVisit(Instance);
+                    break;
+            }
+            return null;
         }
     }
 

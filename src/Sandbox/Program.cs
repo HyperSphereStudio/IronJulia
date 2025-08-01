@@ -91,8 +91,8 @@ end
 static void ExprTests() {
     Console.WriteLine("==== EXPR TEST ====");
     //Expose the Net Metadata as a Julia Module
-    var cMod = (Core.Module) new NetRuntimeType(typeof(MyClass), null);
-    var blk = Block.CreateRootBlock();
+    var cMod = NetType.GetOrCreateModuleForType(typeof(MyClass));
+    var blk = Block.Create();
 
 /*
 j = 1
@@ -110,6 +110,8 @@ if j == 1
    @goto top
 end
 
+MyBasicFieldExample = 5;       //setproperty!(MyClass, MyBasicFieldExample)
+println(MyBasicFieldExample)   
 j
 */
 
@@ -117,33 +119,35 @@ j
     var j = blk.CreateVariable(typeof(Base.Int), "j");
     var top = blk.CreateLabel("top");
     
-    blk.Statements.Add(Assignment.Create(j, Constant.Create(new Base.Int(1))));  //j = 1
-    blk.Statements.Add(top);  //@label top
-    blk.Statements.Add(Assignment.Create(i, Constant.Create(new Base.Int(0))));  //i = 0
+    blk.Append(Assignment.Create(j, Constant.Create(new Base.Int(1))));  //j = 1
+    blk.Append(top);  //@label top
+    blk.Append(Assignment.Create(i, Constant.Create(new Base.Int(0))));  //i = 0
     
     var loop = blk.CreateWhile();
   
-    loop.Condition.Statements.Add(
+    loop.Condition.Append(
         BinaryOperatorInvoke.Create(Base.op_LessThan, 
         i, Constant.Create(new Base.Int(5))));  //i < 5
 
-    loop.Body.Statements.Add(FunctionInvoke.Create((Core.Function) cMod.getglobal("Test")!, 
+    loop.Body.Append(FunctionInvoke.Create((Core.Function) cMod.getglobal("Test")!, 
         [i, Constant.Create(new Base.Int(3)), j]));   //Test(i, 3, j)
 
-    loop.Body.Statements.Add(Assignment.Create(i, 
+    loop.Body.Append(Assignment.Create(i, 
         BinaryOperatorInvoke.Create(Base.op_Add, 
             i, Constant.Create(new Base.Int(1))), true));  //i += 1
     
-    blk.Statements.Add(loop);
+    blk.Append(loop);
     
     var ifStmt = blk.CreateConditional();
-    ifStmt.Condition!.Statements.Add(BinaryOperatorInvoke.Create(Base.op_Equality, 
+    ifStmt.Condition!.Append(BinaryOperatorInvoke.Create(Base.op_Equality, 
         j, Constant.Create(new Base.Int(1))));   //j == 1
-    ifStmt.Body.Statements.Add(Assignment.Create(j, Constant.Create(new Base.Int(2))));  //j = 2
-    ifStmt.Body.Statements.Add(Goto.Create(top)); 
+    ifStmt.Body.Append(Assignment.Create(j, Constant.Create(new Base.Int(2))));  //j = 2
+    ifStmt.Body.Append(Goto.Create(top)); 
     
-    blk.Statements.Add(ifStmt);
-    blk.Statements.Add(j);
+    blk.Append(ifStmt);
+    blk.Append(SetProperty.Create(Constant.Create(cMod), "MyBasicBindingExample", Constant.Create(new Base.Int(5)))); //MyClass.MyBasicBindingExample = 5
+    blk.Append(FunctionInvoke.Create(Base.println, [GetProperty.Create(Constant.Create(cMod), "MyBasicBindingExample")]));  //println(MyBasicBindingExample)
+    blk.Append(j);
     
     blk.PrintJuliaString();
 
@@ -154,8 +158,8 @@ j
     Console.WriteLine();
 }
 
-
 public class MyClass {
+    public static Base.Int MyBasicBindingExample = 3;
     public static void Test(Base.Int a, Base.Int b, Base.Int j) {
         Console.WriteLine($"{a} + {b} is {a + b}. j={j}");
     }

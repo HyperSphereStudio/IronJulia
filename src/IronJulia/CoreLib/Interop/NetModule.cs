@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace IronJulia.CoreLib.Interop;
 
@@ -52,6 +53,26 @@ public class NetRuntimeNamespaceModule : Core.Module {
     }
 }
 
+public static class NetType {
+    private static readonly ConditionalWeakTable<Type, Core.Module> _type2module = new();
+
+    public static Core.Module RegisterType2Module(Type t, Core.Module m) {
+        if (TryGetModuleFromType(t, out _) || !_type2module.TryAdd(t, m)) {
+            throw new NotSupportedException($"Type {t.FullName} is already registered.");
+        }
+        return m;
+    }
+
+    public static bool TryGetModuleFromType(Type t, out Core.Module? m) => _type2module.TryGetValue(t, out m);
+
+    public static Core.Module GetOrCreateModuleForType(Type t) {
+        if (TryGetModuleFromType(t, out var m))
+            return m!;
+        var parent = t.DeclaringType != null ? GetOrCreateModuleForType(t.DeclaringType) : null;
+        return RegisterType2Module(t, new NetRuntimeType(t, parent));
+    }
+}
+
 public class NetRuntimeType : Core.Module {
     public readonly Type Source;
     public Base.Symbol Name => Source.Name;
@@ -72,7 +93,7 @@ public class NetRuntimeType : Core.Module {
         ["op_Inequality"] = Base.op_InEquality
     };
     
-    public NetRuntimeType(Type source, Core.Module? parent) {
+    internal NetRuntimeType(Type source, Core.Module? parent) {
         Source = source;
         Parent = parent;
         
@@ -94,6 +115,8 @@ public class NetRuntimeType : Core.Module {
                 return true;
         
             var name = names[0].Value;
+        
+            value = null;
         
             var bf = BindingFlags.FlattenHierarchy;
 
@@ -127,9 +150,9 @@ public class NetRuntimeType : Core.Module {
                 var f = new Core.Function(name, this);
                 value = f;
                 foreach (var m in methods)
-                    f.Methods.Add(new NetMethod(f, m));
+                    f.Methods.Add(new NetMethod(f, m!));
             }
-        
+            
             if(value != null)
                 _bindingCache.Add(name, value);
 

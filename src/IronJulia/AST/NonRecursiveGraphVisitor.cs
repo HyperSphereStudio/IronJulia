@@ -16,53 +16,54 @@ public abstract class NonRecursiveGraphVisitor<T> where T:INodeVisitor<T> {
         });
     }
 
-    public abstract void VisitStatesStart(T expr, ref object? data, ref uint? nextState);
-    public abstract void VisitStatesEnd(T expr, ref object? data);
-    public abstract void AfterStateVisit(T expr, ref object? data, uint? state, ref uint? nextState);
+    public abstract void VisitStatesStart(ref NodeVisitorState<T> state);
+    public abstract void VisitStatesEnd(ref NodeVisitorState<T> state);
+    public abstract void AfterStateVisit(ref NodeVisitorState<T> state);
 
     public virtual void Visit(T expr) {
         PushNewVisit(expr);
         while (Frames.Count > 0) {
             var eidx = Frames.Count - 1;
             var node = Frames[eidx];
-            uint? s = null;
-            uint? ns = node.State;
-            var iterateNextState = true;
+            uint? ls;
 
             switch (node.VisitState) {
                 case VisitState.VisitStateStart:
-                    VisitStatesStart(node.Node, ref node.Data, ref ns);
+                    node.LastState = uint.MaxValue;
+                    VisitStatesStart(ref node);
+                    ls = node.State;
                     
-                    if (ns == null)
-                        iterateNextState = false;
-                    else
-                        s = node.Node.Visit(this, node);
+                    if (node.State == null)
+                        node.VisitState = VisitState.VisitStatesEnd;
+                    else {
+                        node.State = node.Node.Visit(this, node);
+                        node.LastState = ls;
+                        node.VisitState = VisitState.VisitedState;
+                    }
 
-                    Frames[eidx] = node with {
-                        State = s,
-                        VisitState = iterateNextState ? VisitState.VisitedState : VisitState.VisitStatesEnd,
-                        LastState = node.State
-                    };
+                    Frames[eidx] = node;
+                    
                     break;
                 case VisitState.VisitedState:
-                    iterateNextState = node.VisitState == VisitState.VisitedState;
-                    AfterStateVisit(node.Node, ref node.Data, node.LastState, ref ns);
-                    node.State = ns;
-                    iterateNextState &= ns != null;
-
+                    var iterateNextState = node.VisitState == VisitState.VisitedState;
+                    
+                    AfterStateVisit(ref node);
+                    ls = node.State;
+                    
+                    iterateNextState &= node.State != null;
+ 
                     if (iterateNextState)
-                        s = node.Node.Visit(this, node);
+                        node.State = node.Node.Visit(this, node);
 
                     Frames[eidx] = node with {
-                        State = s,
                         VisitState = iterateNextState ? VisitState.VisitedState : VisitState.VisitStatesEnd,
-                        LastState = ns
+                        LastState = ls
                     };
                     
                     break;
                 case VisitState.VisitStatesEnd:
                     Frames.Pop();
-                    VisitStatesEnd(node.Node, ref node.Data);
+                    VisitStatesEnd(ref node);
                     break;
                 default:
                     throw new UnreachableException();

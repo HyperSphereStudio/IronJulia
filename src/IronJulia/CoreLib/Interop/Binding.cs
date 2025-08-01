@@ -31,7 +31,10 @@ public class FieldBinding : IBinding {
     public readonly FieldInfo Field;
     
     public object? GetValue(object? instance) => Field.GetValue(instance);
-    public void SetValue(object? instance, object? value) => Field.SetValue(instance, value);
+
+    public void SetValue(object? instance, object? value) {
+        Field.SetValue(instance, value);
+    }
     
     public FieldBinding(FieldInfo field, Core.Module module) {
         Field = field;

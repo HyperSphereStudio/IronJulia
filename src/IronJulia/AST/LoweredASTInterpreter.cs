@@ -1,19 +1,21 @@
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
+using System.Dynamic;
+using System.Runtime.CompilerServices;
+using IronJulia.CoreLib.Interop;
+using Microsoft.CSharp.RuntimeBinder;
 using Microsoft.Extensions.ObjectPool;
 
 namespace IronJulia.AST;
 
 using static LoweredJLExpr;
 
-public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
-{
+public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr> {
     private readonly HashSet<ILoweredJLExpr> _activeSet = new();
     public readonly Dictionary<Variable, object?> Vars = new();
     private readonly Dictionary<Label, (int FrameIndex, uint? BlockInstrIndex)> _labels = new();
     private object? _lastValue;
     private readonly DefaultObjectPool<Callsite> _callsitePool = new(new DefaultPooledObjectPolicy<Callsite>());
-
+    
     public void PrintActiveVariables(TextWriter? textWriter = null) {
         textWriter ??= Console.Out;
         foreach(var v in Vars){
@@ -34,30 +36,39 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
         return _lastValue;
     }
     
-    public override void VisitStatesStart(ILoweredJLExpr expr, ref object? data, ref uint? nextState) {
-        if (!_activeSet.Add(expr))
+    public override void VisitStatesStart(ref NodeVisitorState<ILoweredJLExpr> state) {
+        if (!_activeSet.Add(state.Node))
             throw new NotSupportedException("Cannot recursively visit the same node!");
-        switch (expr) {
-            case Assignment:
-            case Goto:
-            case Variable:
-            case While:
-            case For:
-            case Conditional:
+        switch (state.Node) {
             case Constant:
+            case Assignment:
+            case Variable:
+            case GetProperty:
+            case SetProperty:
                 break;
+            
+            case FunctionInvoke:
+                state.Data = _callsitePool.Get();
+                break;
+            
             case Block:
                 _lastValue = null;
                 break;
+            
+            case Conditional:
+            case While:
+            case For:
+                break;
+                
             case Label lb:
                 Debug.Assert(Frames[^2].Node is Block);
                 _labels.Add(lb, (Frames.Count - 1, Frames[^2].LastState));
                 break;
-            case FunctionInvoke:
-                data = _callsitePool.Get();
+            
+            case Goto:
                 break;
             default:
-                throw new NotSupportedException(expr.GetType().Name);
+                throw new NotSupportedException(state.Node.GetType().Name);
         }
     }
 
@@ -66,9 +77,6 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
     private void UndoExpr(ILoweredJLExpr expr) {
         _activeSet.Remove(expr);
         switch (expr) {
-            case For fr:
-                Vars.Remove(fr.State); //Exposed to block scope
-                break;
             case Label lbl:
                 _labels.Remove(lbl);
                 break;
@@ -81,34 +89,71 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
                 foreach(var v in bk.Variables)
                     Vars.Remove(v.Value);
                 break;
+            case For fr:
+                Vars.Remove(fr.State); //Exposed to block scope
+                break;
         }
     }
     
-    public override void VisitStatesEnd(ILoweredJLExpr expr, ref object? data) {
-        _activeSet.Remove(expr);
-        switch (expr) {
-            case Conditional:
-            case While:
-            case For:
-            case Label:
-                break;
-            case Block bk:
-                UndoExpr(bk);
+    private void ExecuteSetProperty(object? instance, object? value, Base.Symbol propertyName) {
+        if (instance == null)
+            throw new NullReferenceException();
+        
+        if (instance is Core.Module m) {
+            m[propertyName] = value;
+            return;
+        }
+
+        throw new NotSupportedException();
+    }
+    
+    private void ExecuteGetProperty(object? instance, Base.Symbol propertyName) {
+        if (instance == null)
+            throw new NullReferenceException();
+
+        if (instance is Core.Module m) {
+            _lastValue = m[propertyName];
+            return;
+        }
+
+        throw new NotSupportedException();
+    }
+    
+    public override void VisitStatesEnd(ref NodeVisitorState<ILoweredJLExpr> state) {
+        _activeSet.Remove(state.Node);
+        switch (state.Node) {
+            case Constant ck:
+                _lastValue = ck.Value;
                 break;
             case Variable v:
                 _lastValue = Vars[v];
-                break;
-            case Constant ck:
-                _lastValue = ck.Value;
                 break;
             case Assignment asn:
                 Vars[asn.Variable] = _lastValue;
                 break;
             case FunctionInvoke fi:
-                var fid = ((Callsite?)data)!;
+                var fid = ((Callsite?)state.Data)!;
                 _lastValue = fi.Function.Invoke(fid);
                 fid.Reset();
                 _callsitePool.Return(fid);
+                break;
+            
+            case GetProperty gp:
+                ExecuteGetProperty(_lastValue, gp.Name);
+                break;
+            
+            case SetProperty sp:
+                ExecuteSetProperty(_lastValue, state.Data, sp.Name);
+                break;
+            
+            case Conditional:
+            case While:
+            case For:
+            case Label:
+                break;
+            
+            case Block bk:
+                UndoExpr(bk);
                 break;
             case Goto gt:
                 var lblState = _labels[gt.Label];
@@ -128,8 +173,9 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
                 };
                 
                 break;
+            
             default:
-                throw new NotSupportedException(expr.GetType().Name);
+                throw new NotSupportedException(state.Node.GetType().Name);
         }
     }
 
@@ -157,39 +203,44 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
         return ((Base.Bool) ConvertTo(_lastValue, typeof(Base.Bool))!).Value;
     }
 
-    public override void AfterStateVisit(ILoweredJLExpr expr, ref object? data, uint? state, ref uint? nextState) {
-        switch (expr) {
+    public override void AfterStateVisit(ref NodeVisitorState<ILoweredJLExpr> state) {
+        switch (state.Node) {
             case Block:
             case Assignment:
             case Goto:
             case Label:
             case Variable:
             case Constant:
+            case GetProperty:
+                break;
+            case SetProperty:
+                if (state.LastState == SetProperty.EvalValue) {
+                    state.Data = _lastValue;
+                }
                 break;
             case Conditional c:
-                if (state == Conditional.EvalCondState) {
-                    nextState = ReadBoolean() ? Conditional.EvalBodyState : (c.Else != null ? Conditional.EvalElseState : null);
+                if (state.LastState == Conditional.EvalCondState) {
+                    state.State = ReadBoolean() ? Conditional.EvalBodyState : (c.Else != null ? Conditional.EvalElseState : null);
                 }
                 break;
             case While:
-                if (state == While.EvalCondState) {
+                if (state.LastState == While.EvalCondState) {
                     if (!ReadBoolean()) {
-                        nextState = null;
+                        state.State = null;
                         return;
                     }
-           
                     var f = Frames[^2];
                     Debug.Assert(f.Node is Block);
                     Frames[^2] = f with { State = f.LastState, LastState = f.LastState - 1 }; //goto condition after body
                 }
                 break;
             case For fl:
-                switch (state) {
+                switch (state.State) {
                     case For.EvalInitialization:
                         Vars[fl.State] = _lastValue;       //state = iterate(iterable)
                         break;
                     case For.EvalCondState when ReferenceEquals(_lastValue, Base.Nothing.Instance): // state !== nothing
-                        nextState = null;
+                        state.State = null;
                         return;
                     case For.EvalCondState: {
                         var f = Frames[^2];
@@ -203,11 +254,11 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr>
                 }
                 break;
             case FunctionInvoke:
-                var fid = ((Callsite?) data)!;
+                var fid = ((Callsite?) state.Data)!;
                 fid.AddArg(_lastValue);
                 break;
             default:
-                throw new NotSupportedException(expr.GetType().Name);
+                throw new NotSupportedException(state.Node.GetType().Name);
         }
     }
 }
