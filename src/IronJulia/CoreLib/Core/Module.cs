@@ -27,7 +27,6 @@ public partial struct Core {
         }
         
         public bool TryGetBinding([NotNullWhen(true)] out IBinding? value, FieldAttributes fattr, params Span<Base.Symbol> names);
-        
         object? IBinding.GetValue(object? instance) => this;
         void IBinding.SetValue(object? instance, object? value) => throw new NotSupportedException();
     }

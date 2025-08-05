@@ -1,9 +1,6 @@
+
+
 using System.Diagnostics;
-using System.Dynamic;
-using System.Runtime.CompilerServices;
-using IronJulia.CoreLib.Interop;
-using Microsoft.CSharp.RuntimeBinder;
-using Microsoft.Extensions.ObjectPool;
 
 namespace IronJulia.AST;
 
@@ -14,7 +11,6 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr> {
     public readonly Dictionary<Variable, object?> Vars = new();
     private readonly Dictionary<Label, (int FrameIndex, uint? BlockInstrIndex)> _labels = new();
     private object? _lastValue;
-    private readonly DefaultObjectPool<Callsite> _callsitePool = new(new DefaultPooledObjectPolicy<Callsite>());
     
     public void PrintActiveVariables(TextWriter? textWriter = null) {
         textWriter ??= Console.Out;
@@ -48,7 +44,7 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr> {
                 break;
             
             case FunctionInvoke:
-                state.Data = _callsitePool.Get();
+                state.Data = JulianCallsite<RuntimeValue, object?>.Get();
                 break;
             
             case Block:
@@ -132,12 +128,10 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr> {
                 Vars[asn.Variable] = _lastValue;
                 break;
             case FunctionInvoke fi:
-                var fid = ((Callsite?)state.Data)!;
+                var fid = ((JulianCallsite<RuntimeValue, object?>?)state.Data)!;
                 _lastValue = fi.Function.Invoke(fid);
-                fid.Reset();
-                _callsitePool.Return(fid);
+                fid.Return();
                 break;
-            
             case GetProperty gp:
                 ExecuteGetProperty(_lastValue, gp.Name);
                 break;
@@ -187,13 +181,10 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr> {
         }
         if(v.GetType().IsAssignableTo(t))
             return v;
-        
-        var cs = _callsitePool.Get();
-        cs.AddArg(t);
-        cs.AddArg(v);
+
+        var cs = RuntimeJulianCallsite.Get().AddArg(new(t)).AddArg(new(v));
         var o = Base.convert.Invoke(cs);
-        cs.Reset();
-        _callsitePool.Return(cs);
+        cs.Return();
         return o;
     }
 
@@ -254,8 +245,7 @@ public class LoweredASTInterpreter : NonRecursiveGraphVisitor<ILoweredJLExpr> {
                 }
                 break;
             case FunctionInvoke:
-                var fid = ((Callsite?) state.Data)!;
-                fid.AddArg(_lastValue);
+                ((RuntimeJulianCallsite?) state.Data)!.AddArg(new(_lastValue));
                 break;
             default:
                 throw new NotSupportedException(state.Node.GetType().Name);

@@ -6,7 +6,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sandbox", "Sandbox\Sandbox.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lokad.ILPack", "ILPack\src\Lokad.ILPack.csproj", "{D967B107-097E-4BC2-8FB4-3ED9ABC1E0A7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", "{2433DCD6-40B0-4EAD-B238-0417CFED0189}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Benchmarks", "Benchmarks\Benchmarks.csproj", "{0B17CB19-F658-47D8-AE1E-801F64F0E854}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -26,9 +26,9 @@ Global
 		{D967B107-097E-4BC2-8FB4-3ED9ABC1E0A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D967B107-097E-4BC2-8FB4-3ED9ABC1E0A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D967B107-097E-4BC2-8FB4-3ED9ABC1E0A7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{2433DCD6-40B0-4EAD-B238-0417CFED0189}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2433DCD6-40B0-4EAD-B238-0417CFED0189}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2433DCD6-40B0-4EAD-B238-0417CFED0189}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{2433DCD6-40B0-4EAD-B238-0417CFED0189}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0B17CB19-F658-47D8-AE1E-801F64F0E854}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0B17CB19-F658-47D8-AE1E-801F64F0E854}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0B17CB19-F658-47D8-AE1E-801F64F0E854}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0B17CB19-F658-47D8-AE1E-801F64F0E854}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

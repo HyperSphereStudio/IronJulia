@@ -30,7 +30,7 @@ public partial struct Base {
 
         public Expr(Symbol head) {
             this.head = head;
-            args = new(ValueTuple.Create(4));
+            args = new(4);
         }
         
         public Expr(Symbol head, params Core.Array<Any, Vals.Int1, ValueTuple<Int>> args) {

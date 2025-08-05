@@ -54,16 +54,16 @@ public class NetRuntimeNamespaceModule : Core.Module {
 }
 
 public static class NetType {
-    private static readonly ConditionalWeakTable<Type, Core.Module> _type2module = new();
+    private static readonly ConditionalWeakTable<Type, Core.Module> Type2Module = new();
 
     public static Core.Module RegisterType2Module(Type t, Core.Module m) {
-        if (TryGetModuleFromType(t, out _) || !_type2module.TryAdd(t, m)) {
+        if (TryGetModuleFromType(t, out _) || !Type2Module.TryAdd(t, m)) {
             throw new NotSupportedException($"Type {t.FullName} is already registered.");
         }
         return m;
     }
 
-    public static bool TryGetModuleFromType(Type t, out Core.Module? m) => _type2module.TryGetValue(t, out m);
+    public static bool TryGetModuleFromType(Type t, out Core.Module? m) => Type2Module.TryGetValue(t, out m);
 
     public static Core.Module GetOrCreateModuleForType(Type t) {
         if (TryGetModuleFromType(t, out var m))

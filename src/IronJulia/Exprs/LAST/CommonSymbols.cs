@@ -11,6 +11,11 @@ public class CommonSymbols {
     public static readonly Symbol cfunction_sym = "cfunction";
     public static readonly Symbol quote_sym = "quote";
     public static readonly Symbol inert_sym = "inert";
+    public static readonly Symbol while_sym = "while";
+    public static readonly Symbol for_sym = "while";
+    public static readonly Symbol if_sym = "if";
+    public static readonly Symbol elseif_sym = "elseif";
+    public static readonly Symbol else_sym = "else";
     public static readonly Symbol top_sym = "top";
     public static readonly Symbol core_sym = "core";
     public static readonly Symbol globalref_sym = "globalref";
@@ -18,7 +23,6 @@ public class CommonSymbols {
     public static readonly Symbol lineinfo_sym = "lineinfo";
     public static readonly Symbol incomplete_sym = "incomplete";
     public static readonly Symbol error_sym = "error";
-    public static readonly Symbol goto_sym = "goto";
     public static readonly Symbol gotoifnot_sym = "gotoifnot";
     public static readonly Symbol return_sym = "return";
     public static readonly Symbol lambda_sym = "lambda";
@@ -70,7 +74,10 @@ public class CommonSymbols {
     public static readonly Symbol force_compile_sym = "force_compile";
     public static readonly Symbol infer_sym = "infer";
     public static readonly Symbol max_methods_sym = "max_methods";
+    public static readonly Symbol label_sym = "symboliclabel";
+    public static readonly Symbol goto_sym = "symbolicgoto";
     public static readonly Symbol macrocall_sym = "macrocall";
+    public static readonly Symbol tuple_sym = "tuple";
     public static readonly Symbol escape_sym = "escape";
     public static readonly Symbol hygienicscope_sym = "hygienic-scope";
     public static readonly Symbol gc_preserve_begin_sym = "gc_preserve_begin";

@@ -59,7 +59,7 @@ public class LoweredASTJuliaPrinter : NonRecursiveGraphVisitor<ILoweredJLExpr>
                 Write(asn.Variable.Name);
                 Write(" ");
                 if (asn.IsBinaryCompound) {
-                    PushNewVisit(asn.BinaryOperator.Arguments[1]);
+                    PushNewVisit(asn.BinaryOperator.CallSite.Values[1]);
                     Write(asn.BinaryOperator.Function.Name);
                     state.State = null;
                 }
@@ -180,8 +180,15 @@ public class LoweredASTJuliaPrinter : NonRecursiveGraphVisitor<ILoweredJLExpr>
                 ActiveState.PrintedStatement = false;
                 break;
             case FunctionInvoke fi:
-                if(state.State < fi.Arguments.Length)
+                if(state.State < fi.CallSite.Values.Count)
                     Write(", ");
+                else if (fi.CallSite.KeyArgNames.Count > 0) {
+                    var kvs = state.State - fi.CallSite.Values.Count;
+                    if (kvs == 0)
+                        Write(";");
+                    else if (state.State < fi.CallSite.Values.Count)
+                        Write(", ");
+                }
                 break;
             default: throw new NotSupportedException(state.Node.GetType().Name);
         }

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using IronJulia.CoreLib;
 using SpinorCompiler.Boot;
 using static Base;
@@ -31,9 +32,20 @@ public partial struct Core
     }
     public unsafe struct GenericMemory<Kind, T, AddressSpace> : DenseArray
         where Kind : Val<Symbol> where AddressSpace : Any {
-        public Ptr<byte> ptr { get; set; }
+        public Ptr<byte> ptr => new((byte*) Unsafe.AsPointer(ref Ref));
+        
+        public ref T Ref {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get {
+                if (Array != null)
+                    return ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(Array), (nint)0);
+                return ref Unsafe.AsRef<T>(ptr_v);
+            }
+        }
+        
         public T[]? Array;
-        public Int length { get; set; }
+        public T* ptr_v;
+        public Int length { get; private set; }
         
         public GenericMemory(T[] array) {
             length = array.Length;
@@ -42,13 +54,12 @@ public partial struct Core
         
         public GenericMemory(Ptr<byte> unmanagedMemory, Int length) {
             this.length = length;
-            ptr = unmanagedMemory;
+            ptr_v = (T*) unmanagedMemory.Value;
         }  
         
-        public Span<T> Span => Array != null ? Array.AsSpan() : new Span<T>(ptr.Value, length);
+        public Span<T> Span => MemoryMarshal.CreateSpan(ref Ref, length);
 
-        public void Resize(Int newSize)
-        {
+        public void Resize(Int newSize) {
             if (Array == null)
                 throw new NotSupportedException("Cannot Resize External Memory Reference!");
             System.Array.Resize(ref Array, newSize);
@@ -105,8 +116,17 @@ public partial struct Core
         
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         public IEnumerator<T> GetEnumerator() {
-            for (Int i = 0, n = Length; i < n; i++)
-                yield return Mem.Span[i];
+            if (Mem.Array != null)
+                foreach (var j in Mem.Array)
+                    yield return j;
+
+            for (Int i = 0, n = Length; i < n; i++) {
+                Unsafe.SkipInit(out T v);
+                unsafe {
+                    v = Mem.ptr_v[0];
+                }
+                yield return v;
+            }
         }
 
         public void Clear() {
@@ -119,13 +139,11 @@ public partial struct Core
         }
 
         public void CopyTo(T[] array, int arrayIndex) {
-            for (Int len = Length - 1; len >= 0; len -= 1)
-                array[arrayIndex++] = Mem.Span[len];
+            var s = Mem.Span;
+            for (var len = Length - 1; len > -1; len--)
+                array[arrayIndex++] = s[len];
         }
-
-        public bool Remove(T item) => throw new NotSupportedException();
         public int Count => Length;
-        public bool IsReadOnly => false;
     }
 
     public interface Array : DenseArray, IEnumerable;
@@ -213,4 +231,6 @@ public partial struct Core
         public T* Value { get; init; } = value;
         public static implicit operator IntPtr(Ptr<T> v) => new(v.Value);
     }
+    
+    
 }

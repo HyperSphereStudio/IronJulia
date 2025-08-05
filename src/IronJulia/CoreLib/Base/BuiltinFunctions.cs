@@ -1,4 +1,5 @@
 using System.Reflection;
+using IronJulia.AST;
 using IronJulia.CoreLib;
 using IronJulia.CoreLib.Interop;
 
@@ -25,6 +26,9 @@ public partial struct Base {
     public static bool StrictCompare<T1, T2>(T1? a, T2? b) {
         return typeof(T1) == typeof(T2) && (a?.Equals(b) ?? false);
     }
+
+    public static Expr @goto(Symbol label) => new(CommonSymbols.goto_sym, label);
+    public static Expr @label(Symbol label) => new(CommonSymbols.label_sym, label);
     
     static Base() {
         foreach (var ty in typeof(Base).GetNestedTypes()) {
@@ -32,5 +36,13 @@ public partial struct Base {
         }
         m_Base.AddBinding("println", println);
         println.Methods.Add(new NetMethod(println, typeof(Console).GetMethod("WriteLine", BindingFlags.Public|BindingFlags.Static, [typeof(object)])!));
+
+        var @goto = new Core.Function("@goto", m_Base);
+        @goto.Methods.Add(new NetMethod(@goto, typeof(Base).GetMethod("goto", BindingFlags.Public|BindingFlags.Static)!));
+        m_Base.AddBinding("@goto", @goto);
+        
+        var @label = new Core.Function("@label", m_Base);
+        @label.Methods.Add(new NetMethod(@label, typeof(Base).GetMethod("label", BindingFlags.Public|BindingFlags.Static)!));
+        m_Base.AddBinding("@label", @label);
     }
 }

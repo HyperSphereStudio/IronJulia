@@ -1,17 +1,22 @@
-using System.Collections;
+global using LoweredCallsite = JulianCallsite<IronJulia.AST.LoweredJLExpr.ILoweredJLExpr, IronJulia.AST.LoweredJLExpr.ILoweredJLExpr>;
+
 using System.Diagnostics;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Runtime.CompilerServices;
 using IronJulia.CoreLib;
-using IronJulia.CoreLib.Interop;
-using SpinorCompiler.Utils;
 
 namespace IronJulia.AST;
 
 public static class LoweredJLExpr {
-    public interface ILoweredJLExpr : Base.Any, INodeVisitor<ILoweredJLExpr> {
+    public static LoweredCallsite NewCallsite(params ILoweredJLExpr[] args) {
+        var j = new LoweredCallsite();
+        foreach (var a in args)
+            j.AddArg(a);
+        return j;
+    }
+    
+    public interface ILoweredJLExpr : Base.Any, INodeVisitor<ILoweredJLExpr>, ICallsiteValue<ILoweredJLExpr, ILoweredJLExpr> {
         public Type ReturnType { get; set; }
+        ILoweredJLExpr ICallsiteValue<ILoweredJLExpr, ILoweredJLExpr>.Value => this;
+        Type ICallsiteValue<ILoweredJLExpr, ILoweredJLExpr>.Type => ReturnType;
     }
     
     public class Constant : ILoweredJLExpr {
@@ -94,8 +99,8 @@ public static class LoweredJLExpr {
             Body = parent.CreateBlock();
             State = parent.CreateVariable(typeof(Base.Any), "state");
             Iterable = parent.CreateBlock();
-            Initialization = FunctionInvoke.Create(Base.iterate, [Iterable]);
-            IterateNext = FunctionInvoke.Create(Base.iterate, [Iterable, State]);
+            Initialization = FunctionInvoke.Create(Base.iterate, NewCallsite(Iterable));
+            IterateNext = FunctionInvoke.Create(Base.iterate, NewCallsite(Iterable, State));
         }
 
         public uint? Visit(NonRecursiveGraphVisitor<ILoweredJLExpr> visit, NodeVisitorState<ILoweredJLExpr> state) {
@@ -290,31 +295,42 @@ public static class LoweredJLExpr {
     }
 
     public class FunctionInvoke : ILoweredJLExpr {
-        public Core.Function Function; 
-        public ILoweredJLExpr[] Arguments;
+        public Core.Function Function;
+        public LoweredCallsite CallSite;
         public Type ReturnType { get; set; }
         
-        protected FunctionInvoke(Core.Function function, ILoweredJLExpr[] arguments) {
+        protected FunctionInvoke(Core.Function function, LoweredCallsite site) {
             Debug.Assert(function != null);
             Function = function;
-            Arguments = arguments;
+            CallSite = site;
         }
 
-        public static FunctionInvoke Create(Core.Function function, ILoweredJLExpr[] arguments) {
-            return new FunctionInvoke(function, arguments);
+        public static FunctionInvoke Create(Core.Function function, LoweredCallsite site) {
+            return new FunctionInvoke(function, site);
         }
 
         public uint? Visit(NonRecursiveGraphVisitor<ILoweredJLExpr> visit, NodeVisitorState<ILoweredJLExpr> state) {
-            if (state.State >= Arguments.Length) return null;
-            visit.PushNewVisit(Arguments[state.State!.Value]);
-            return state.State + 1 >= Arguments.Length ? null : state.State + 1;
+            if (state.State >= CallSite.Values.Count) {
+                if(state.State >= CallSite.KeyValues.Count) return null;
+                visit.PushNewVisit(CallSite.KeyValues[(int) state.State!.Value].Value);
+                return state.State + 1 >= CallSite.KeyValues.Count ? null : state.State + 1;
+            }
+            visit.PushNewVisit(CallSite.Values[(int) state.State!.Value]);
+            return state.State + 1 >= CallSite.Values.Count ? null : state.State + 1;
         }
     } 
 
     public class BinaryOperatorInvoke : FunctionInvoke {
-        protected BinaryOperatorInvoke(Core.Function function, params ILoweredJLExpr[] arguments) : base(function, arguments) {}
+        protected BinaryOperatorInvoke(Core.Function function, LoweredCallsite site) : base(function, site)
+        {
+            Debug.Assert(function != null);
+            Debug.Assert(site.Values.Count == 2);
+            Debug.Assert(site.KeyValues.Count == 0);
+            Debug.Assert(site.KeyArgNames.Count == 0);
+        }
+        
         public static BinaryOperatorInvoke Create(Core.Function function, ILoweredJLExpr left, ILoweredJLExpr right) {
-            return new BinaryOperatorInvoke(function, left, right);
+            return new BinaryOperatorInvoke(function, NewCallsite(left, right));
         }
     }
 
