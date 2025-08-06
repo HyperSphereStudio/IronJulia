@@ -1,9 +1,13 @@
 using System.Collections;
 using System.Diagnostics;
+using System.Dynamic;
+using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using IronJulia.CoreLib;
+using IronJulia.Utils;
 using SpinorCompiler.Boot;
+using SpinorCompiler.Utils;
 using static Base;
 
 public partial struct Core
@@ -33,19 +37,39 @@ public partial struct Core
     public unsafe struct GenericMemory<Kind, T, AddressSpace> : DenseArray
         where Kind : Val<Symbol> where AddressSpace : Any {
         public Ptr<byte> ptr => new((byte*) Unsafe.AsPointer(ref Ref));
+        public T[]? Array;
+        public readonly T* ptr_v;
+        public Int length;
+
+        public GenericMemoryScopedSlice<Kind, T, AddressSpace> Slice {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => new(ref Ref, length);
+        }
+
+        public GenericMemoryScopedSlice<Kind, T, AddressSpace> ArraySlice {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => new(ref ArrayRef, length);
+        }
+        
+        public ref T ArrayRef
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => ref Array!.GetArrayRef(-1);
+        }
+
+        public ref T ExternalRef {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => ref Unsafe.AsRef<T>(ptr_v);
+        }
         
         public ref T Ref {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 if (Array != null)
-                    return ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(Array), (nint)0);
+                    return ref Array!.GetArrayRef(-1);
                 return ref Unsafe.AsRef<T>(ptr_v);
             }
         }
-        
-        public T[]? Array;
-        public T* ptr_v;
-        public Int length { get; private set; }
         
         public GenericMemory(T[] array) {
             length = array.Length;
@@ -55,18 +79,59 @@ public partial struct Core
         public GenericMemory(Ptr<byte> unmanagedMemory, Int length) {
             this.length = length;
             ptr_v = (T*) unmanagedMemory.Value;
-        }  
-        
-        public Span<T> Span => MemoryMarshal.CreateSpan(ref Ref, length);
+        }
 
         public void Resize(Int newSize) {
             if (Array == null)
                 throw new NotSupportedException("Cannot Resize External Memory Reference!");
-            System.Array.Resize(ref Array, newSize);
+            var newArr = new T[newSize];
+            Array.ToGenericMemorySlice().CopyTo(newArr.ToGenericMemorySlice());
+            Array = newArr;
             length = newSize;
         }
 
-        public void Clear() => Resize(4);
+        public void Clear() => Slice.Clear();
+    }
+    
+    public readonly ref struct GenericMemoryScopedSlice<Kind, T, AddressSpace>(ref T ptr, Int length) : Ref<T> where Kind : Val<Symbol>
+        where AddressSpace : Any {
+        public ref T JuliaPtr => ref Ptr;
+        public ref T NetPtr => ref Unsafe.Add(ref Ptr, 1);
+        public readonly ref T Ptr = ref ptr;
+        public readonly Int Length = length;
+        public ref T Value => ref Ptr;
+        public DynamicMetaObject GetMetaObject(Expression parameter) => throw new NotImplementedException();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public GenericMemoryScopedSlice<Kind, T, AddressSpace> Slice(Int offset, Int length) => new(ref Unsafe.Add(ref JuliaPtr, offset), length);
+        
+        public ref T this[Int index] {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get {
+                if ((nuint)(nint)index > (nuint)(nint)Length || index == 0)
+                    throw new IndexOutOfRangeException();
+                return ref Unsafe.Add(ref Ptr, (nuint)(nint)index);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void CopyTo(GenericMemoryScopedSlice<Kind, T, AddressSpace> dest) {
+            if ((nuint)(nint)dest.Length < (nuint)(nint)Length)
+                throw new IndexOutOfRangeException();
+            MemoryUtils.Memmove(null, ref dest.NetPtr, ref NetPtr, (nuint)(nint)Length);
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe void Clear() {
+            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>()) {
+#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
+                MemoryUtils.ClearWithReferences(null, ref Unsafe.As<T, IntPtr>(ref NetPtr), (nuint) length.Value * (nuint)(sizeof(T) / sizeof(nuint)));
+            }
+            else{
+                MemoryUtils.ClearWithoutReferences(null, ref Unsafe.As<T, byte>(ref NetPtr), (nuint) length.Value * (nuint)sizeof(T));
+            }
+#pragma warning restore CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
+        }
     }
 
     public interface GenericMemoryRef : Any;
@@ -76,7 +141,7 @@ public partial struct Core
         where AddressSpace : Any {
         public VoidPtr ptr_or_offset;
         public GenericMemory<Kind, T, AddressSpace> mem;
-        public ref T Value => ref mem.Span.GetPinnableReference();
+        public ref T Value => ref mem.Ref;
     }
 
     public struct SimpleVector<T> : DenseArray<T, Vals.Int1>{
@@ -92,20 +157,17 @@ public partial struct Core
             Mem = gmem;
             Length = (nint) length;
         }
-        
-        public T this[int idx] {
-            get => Mem.Span[idx - 1];
-            set => Mem.Span[idx - 1] = value;
-        }
-        
+
+        public ref T this[Int idx] => ref Mem.Slice[idx];
+
         public void Add(T item) {
             GrowCapacity(Length + 1);
-            Mem.Span[Length] = item;
-            Length++;
+            Length += 1;
+            Mem.ArraySlice[Length] = item;
         }
 
         public T Pop() {
-            return Mem.Span[Length--];
+            return Mem.ArraySlice[Length--];
         }
         
         private void GrowCapacity(long newCap) {
@@ -115,35 +177,40 @@ public partial struct Core
         }
         
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-        public IEnumerator<T> GetEnumerator() {
-            if (Mem.Array != null)
-                foreach (var j in Mem.Array)
-                    yield return j;
-
-            for (Int i = 0, n = Length; i < n; i++) {
-                Unsafe.SkipInit(out T v);
-                unsafe {
-                    v = Mem.ptr_v[0];
-                }
-                yield return v;
-            }
-        }
-
+        public IEnumerator<T> GetEnumerator() => new FastEnumerator(Mem.Array, Mem.ptr, Length);
         public void Clear() {
             Length = 0;
             Mem.Clear();
         }
-
         public bool Contains(T item) {
             return this.Any(k => EqualityComparer<T>.Default.Equals(k, item));
         }
-
-        public void CopyTo(T[] array, int arrayIndex) {
-            var s = Mem.Span;
-            for (var len = Length - 1; len > -1; len--)
-                array[arrayIndex++] = s[len];
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void CopyTo(T[] array, int offset) {
+            Mem.Slice.Slice(0, Length).CopyTo(array.ToGenericMemorySlice().Slice(offset, Length - offset));
         }
-        public int Count => Length;
+        
+        public int Count => (int) Length;
+        
+        public unsafe struct FastEnumerator(T[]? array, IntPtr ptr, nint length) : IEnumerator<T> {
+            private int index = -1;
+            private readonly T[]? array = array;
+            private readonly IntPtr ptr = ptr;
+            private readonly nint length = length;
+            
+            public T Current {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                get => array != null ? array.UnsafeArrayAccess(index) : Unsafe.Read<T>(Unsafe.Add<T>(ptr.ToPointer(), index + 1));
+            }
+            object IEnumerator.Current => Current!;
+            public bool MoveNext() {
+                index++;
+                return index < length;
+            }
+            public void Reset() => index = -1;
+            public void Dispose() { }
+        }
     }
 
     public interface Array : DenseArray, IEnumerable;
@@ -192,6 +259,7 @@ public partial struct Core
         public void Add(T item) {
             Debug.Assert(sizespan.Length == 1, "Expected Rank 1 Array");
             vec.Add(item);
+            sizespan[0] = vec.Length;
         }
 
         public T this[Tuple<TT> idx] {
@@ -217,7 +285,7 @@ public partial struct Core
         public bool Contains(T item) => vec.Contains(item);
         public void CopyTo(T[] array, int arrayIndex) => vec.CopyTo(array, arrayIndex);
         public bool Remove(T item) => throw new NotSupportedException();
-        public int Count => Length;
+        public int Count => (int) Length;
         public bool IsReadOnly => false;
     }
 
@@ -231,6 +299,5 @@ public partial struct Core
         public T* Value { get; init; } = value;
         public static implicit operator IntPtr(Ptr<T> v) => new(v.Value);
     }
-    
     
 }

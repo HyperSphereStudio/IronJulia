@@ -20,27 +20,6 @@ public partial struct Base {
         public override string ToString() => Value.ToString();
     }
     
-    public readonly struct Int(nint value) : Signed, IEquatable<Int> {
-        public readonly nint Value = value;
-        
-        public static implicit operator Int(nint value) => new(value);
-        public static implicit operator nint(Int value) => value.Value;
-        public static implicit operator Int(int value) => new(value);
-        public static implicit operator int(Int value) => (int) value.Value;
-        public override string ToString() => Value.ToString();
-        public override int GetHashCode() => Value.GetHashCode();
-        public static Int operator +(Int a, Int b) => a.Value + b.Value;
-        public static Int operator -(Int a, Int b) => a.Value - b.Value;
-        public static Int operator *(Int a, Int b) => a.Value * b.Value;
-        public static Int operator /(Int a, Int b) => a.Value / b.Value;
-        public static bool operator <(Int a, Int b) => a.Value < b.Value;
-        public static bool operator >(Int a, Int b) => a.Value > b.Value;
-        public static bool operator ==(Int a, Int b) => a.Value == b.Value;
-        public static bool operator !=(Int a, Int b) => !(a == b);
-        public bool Equals(Int other) => Value == other.Value;
-        public override bool Equals(object? obj) => obj is Int other && Equals(other);
-    }
-    
     public interface Val<T> : Any{
         public static abstract T Value { get; }
     }

@@ -43,6 +43,11 @@ public static class jlapi
             nintv[i] = new Base.Int(i);
         _constantCache[typeof(Base.Int)] = nintv;
         
+        var intv = new Dictionary<Base.Int, Base.Any>();
+        for (var i = -10; i < 11; i++)
+            intv[i] = new Base.Int(i);
+        _constantCache[typeof(Base.Int)] = intv;
+        
         var boolv = new Dictionary<Base.Bool, Base.Any> {
             [false] = Base.Bool.False,
             [true] = Base.Bool.True

@@ -1,5 +1,4 @@
 ﻿using System.CodeDom.Compiler;
-using Antlr4.Runtime.Tree;
 using IronJulia.AST;
 using IronJulia.CoreLib;
 using IronJulia.CoreLib.Interop;
@@ -337,9 +336,9 @@ static void ExprParsing() {
                """;
 
     var jp = new JuliaExprParser();
-    var jexp = (Base.Expr) jp.Parse(expr);
+    var jexp = (Base.Expr)jp.Parse(expr);
     jexp = (Base.Expr) Base.Meta.MacroExpand1(Base.m_Base, jexp);
-    Console.WriteLine(jexp);
+    jexp.Print(new IndentedTextWriter(Console.Out));
 }
 
 public class MyClass {

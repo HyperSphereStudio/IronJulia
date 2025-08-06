@@ -44,7 +44,7 @@ public partial struct Base {
             tw.Write("Head: Symbol ");
             tw.WriteLine(head);
             tw.Write("Args Length: ");
-            tw.WriteLine(args.size[0]);
+            tw.WriteLine(args.size);
             tw.Indent++;
             var idx = 1;
             foreach (var arg in args) {
@@ -53,7 +53,7 @@ public partial struct Base {
                 if (arg is Expr ex) {
                     ex.Print(tw);
                 }else{
-                    tw.Write(arg.GetType().Name);
+                    tw.Write(arg?.GetType()?.Name ?? "null");
                     tw.Write(" ");
                     tw.WriteLine(arg);
                 }
