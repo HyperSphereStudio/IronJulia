@@ -46,3 +46,4 @@ public partial struct Base {
         m_Base.AddBinding("@label", @label);
     }
 }
+

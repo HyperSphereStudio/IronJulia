@@ -5,11 +5,11 @@ public partial struct Base {
 
     public static class Meta {
 
-        public static LoweredJLExpr.ILoweredJLExpr Lower(Any v) {
+        public static LoweredJLExpr.ILoweredJLExpr Lower(object v) {
             return null;
         }
         
-        public static Base.Any MacroExpand1(Core.Module m, Any v) {
+        public static object MacroExpand1(Core.Module m, object v) {
             switch (v) {
                 case Expr ex:
                     var vx = ex.args.vec;
@@ -23,7 +23,7 @@ public partial struct Base {
             return v;
         }
 
-        public static bool TryGetKeyArg(Any v, [NotNullWhen(true)] out Symbol? key, [NotNullWhen(true)] out Any? arg) {
+        public static bool TryGetKeyArg(object v, [NotNullWhen(true)] out Symbol? key, [NotNullWhen(true)] out object? arg) {
             if (v is Expr expr && expr.head == CommonSymbols.assign_sym && expr.args[1] is Symbol sym) {
                 key = sym;
                 arg = expr.args[2];
@@ -33,7 +33,7 @@ public partial struct Base {
             return false;
         }
 
-        private static Any ExpandMacro(Core.Module m, Core.SimpleVector<Any> args) {
+        private static object ExpandMacro(Core.Module m, Core.SimpleVector<object> args) {
             var cs = RuntimeJulianCallsite.Get();
             for (var i = 2; i <= args.Count; i++) {
                 var v = args[i];
@@ -42,7 +42,7 @@ public partial struct Base {
                 else
                     cs.AddArg(new(v));
             }
-            return (Any) ((Core.Function) m[(Symbol) args[1]]!).Invoke(cs)!;
+            return ((Core.Function) m[(Symbol) args[1]]!).Invoke(cs)!;
         }
         
     }

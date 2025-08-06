@@ -136,7 +136,7 @@ public partial struct Core
         
     }
 
-    public abstract class Method(Function function) : Base.Any {
+    public abstract class Method(Function function) : Base.IAny {
         public readonly Function Function = function;
         public int Specialization { get; protected set; }
         internal int UniqueID { get; set; }

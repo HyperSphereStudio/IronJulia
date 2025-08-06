@@ -12,11 +12,11 @@ using static Base;
 
 public partial struct Core
 {
-    public interface AddrSpace : Any;
+    public interface AddrSpace : IAny;
     public interface AddrSpace<Backend> : AddrSpace;
     public struct CPU : AddrSpace<CPU>;
     
-    public interface AbstractArray : Any;
+    public interface AbstractArray : IAny;
     public interface AbstractArray<T> : AbstractArray, IEnumerable<T>;
     public interface AbstractArray<T, N> : AbstractArray<T> where N : Val<Int>;
     public interface AbstractVector : AbstractArray;
@@ -35,7 +35,7 @@ public partial struct Core
         public Span<T> Span { get; }
     }
     public unsafe struct GenericMemory<Kind, T, AddressSpace> : DenseArray
-        where Kind : Val<Symbol> where AddressSpace : Any {
+        where Kind : Val<Symbol> where AddressSpace : IAny {
         public Ptr<byte> ptr => new((byte*) Unsafe.AsPointer(ref Ref));
         public T[]? Array;
         public readonly T* ptr_v;
@@ -94,7 +94,7 @@ public partial struct Core
     }
     
     public readonly ref struct GenericMemoryScopedSlice<Kind, T, AddressSpace>(ref T ptr, Int length) : Ref<T> where Kind : Val<Symbol>
-        where AddressSpace : Any {
+        where AddressSpace : IAny {
         public ref T JuliaPtr => ref Ptr;
         public ref T NetPtr => ref Unsafe.Add(ref Ptr, 1);
         public readonly ref T Ptr = ref ptr;
@@ -134,11 +134,11 @@ public partial struct Core
         }
     }
 
-    public interface GenericMemoryRef : Any;
+    public interface GenericMemoryRef : IAny;
     public interface GenericMemoryRef<Kind> : GenericMemoryRef where Kind : Val<Symbol>;
 
     public struct GenericMemoryRef<Kind, T, AddressSpace> : Ref<T> where Kind : Val<Symbol>
-        where AddressSpace : Any {
+        where AddressSpace : IAny {
         public VoidPtr ptr_or_offset;
         public GenericMemory<Kind, T, AddressSpace> mem;
         public ref T Value => ref mem.Ref;
@@ -289,12 +289,12 @@ public partial struct Core
         public bool IsReadOnly => false;
     }
 
-    public interface Ref : Any;
+    public interface Ref : IAny;
     public interface Ref<T> : Ref {
         public ref T Value { get; }
     }
 
-    public interface Ptr : Any;
+    public interface Ptr : IAny;
     public readonly unsafe struct Ptr<T>(T* value = null) : Ptr where T : unmanaged {
         public T* Value { get; init; } = value;
         public static implicit operator IntPtr(Ptr<T> v) => new(v.Value);

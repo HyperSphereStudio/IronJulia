@@ -11,7 +11,7 @@ public class ILSerializer {
                 cg.il.EmitString(s.Value);
                 cg.il.EmitNew(CachedJuliaInfos.Symbol_Cctor);
                 return true;
-            case Base.Any: {
+            case Base.IAny: {
                 if (!value.GetType().IsValueType)
                     return false;
                 

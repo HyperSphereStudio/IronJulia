@@ -27,13 +27,13 @@ public static class JuliaTupleUtils {
     internal static Dictionary<Type, TypeTuple> _type2tuples = new();
     private static Dictionary<TypeTuple, Delegate> _tuplectors = new();
     public static Core.Tuple<ValueTuple> NewTuple() => new();
-    public static Core.Tuple<ValueTuple<T1>> NewTuple<T1>(T1 t1) where T1: Base.Any => new (new ValueTuple<T1>(t1));
-    public static Core.Tuple<(T1, T2)> NewTuple<T1, T2>(T1 t1, T2 t2) where T1: Base.Any where T2: Base.Any => new ((t1, t2));
-    public static Core.Tuple<(T1, T2, T3)> NewTuple<T1, T2, T3>(T1 t1, T2 t2, T3 t3) where T1: Base.Any where T2: Base.Any where T3: Base.Any => new ((t1, t2, t3));
-    public static Core.Tuple<(T1, T2, T3, T4)> NewTuple<T1, T2, T3, T4>(T1 t1, T2 t2, T3 t3, T4 t4) where T1: Base.Any where T2: Base.Any where T3: Base.Any where T4: Base.Any => new ((t1, t2, t3, t4));
-    public static Core.Tuple<(T1, T2, T3, T4, T5)> NewTuple<T1, T2, T3, T4, T5>(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5) where T1: Base.Any where T2: Base.Any where T3: Base.Any where T4: Base.Any where T5: Base.Any => new ((t1, t2, t3, t4, t5));
-    public static Core.Tuple<(T1, T2, T3, T4, T5, T6)> NewTuple<T1, T2, T3, T4, T5, T6>(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6) where T1: Base.Any where T2: Base.Any where T3: Base.Any where T4: Base.Any where T5: Base.Any where T6: Base.Any => new ((t1, t2, t3, t4, t5, t6));
-    public static Core.Tuple<(T1, T2, T3, T4, T5, T6, T7)> NewTuple<T1, T2, T3, T4, T5, T6, T7>(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6, T7 t7) where T1: Base.Any where T2: Base.Any where T3: Base.Any where T4: Base.Any where T5: Base.Any where T6: Base.Any where T7: Base.Any => new ((t1, t2, t3, t4, t5, t6, t7));
+    public static Core.Tuple<ValueTuple<T1>> NewTuple<T1>(T1 t1) => new (new ValueTuple<T1>(t1));
+    public static Core.Tuple<(T1, T2)> NewTuple<T1, T2>(T1 t1, T2 t2) => new ((t1, t2));
+    public static Core.Tuple<(T1, T2, T3)> NewTuple<T1, T2, T3>(T1 t1, T2 t2, T3 t3) => new ((t1, t2, t3));
+    public static Core.Tuple<(T1, T2, T3, T4)> NewTuple<T1, T2, T3, T4>(T1 t1, T2 t2, T3 t3, T4 t4) => new ((t1, t2, t3, t4));
+    public static Core.Tuple<(T1, T2, T3, T4, T5)> NewTuple<T1, T2, T3, T4, T5>(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5) => new ((t1, t2, t3, t4, t5));
+    public static Core.Tuple<(T1, T2, T3, T4, T5, T6)> NewTuple<T1, T2, T3, T4, T5, T6>(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6) => new ((t1, t2, t3, t4, t5, t6));
+    public static Core.Tuple<(T1, T2, T3, T4, T5, T6, T7)> NewTuple<T1, T2, T3, T4, T5, T6, T7>(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6, T7 t7) => new ((t1, t2, t3, t4, t5, t6, t7));
 
     public static Type GetTupleType(TypeTuple tupleOfTypes) {
         if (!_tuples2type.TryGetValue(tupleOfTypes, out var tt)) {
@@ -97,14 +97,14 @@ public static class JuliaTupleUtils {
         return met.CreateDelegate(Expression.GetFuncType([..parameters, jlType]));
     }
     
-    public static Core.JTuple NewTuple(Base.Any[] values, Type tupleType) {
+    public static Core.JTuple NewTuple(object[] values, Type tupleType) {
         RuntimeHelpers.RunClassConstructor(tupleType.TypeHandle);
         return Unsafe.As<Core.JTuple>(GetTupleCtor(_type2tuples[tupleType]).DynamicInvoke(Unsafe.As<object?[]>(values)))!;
     }
 
-    public static Core.JTuple NewTuple(Base.Any[] values, Type[] types) => NewTuple(values, GetTupleType(new(types)));
+    public static Core.JTuple NewTuple(object[] values, Type[] types) => NewTuple(values, GetTupleType(new(types)));
     
-    public static Core.JTuple NewTuple(Base.Any[] values) {
+    public static Core.JTuple NewTuple(params object[] values) {
         var tybuffer = new Type[values.Length];
         for(int i = 0, n = values.Length; i < n; i++)
             tybuffer[i] = values[i].GetType();

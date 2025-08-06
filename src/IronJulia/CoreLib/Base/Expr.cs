@@ -2,7 +2,7 @@ using System.CodeDom.Compiler;
 using IronJulia.CoreLib;
 
 public partial struct Base {
-    public readonly struct Symbol : Any, IEquatable<Symbol>
+    public readonly struct Symbol : IAny, IEquatable<Symbol>
     {
         private static readonly Dictionary<string, Symbol> Symbols = new();
         
@@ -24,16 +24,16 @@ public partial struct Base {
         public static bool operator !=(Symbol a, Symbol b) => !(a == b);
     }
     
-    public class Expr : Any {
+    public class Expr : IAny {
         public Symbol head;
-        public Core.Array<Any, Vals.Int1, ValueTuple<Int>> args;
+        public Core.Array<object, Vals.Int1, ValueTuple<Int>> args;
 
         public Expr(Symbol head) {
             this.head = head;
             args = new(4);
         }
         
-        public Expr(Symbol head, params Core.Array<Any, Vals.Int1, ValueTuple<Int>> args) {
+        public Expr(Symbol head, params Core.Array<object, Vals.Int1, ValueTuple<Int>> args) {
             this.head = head;
             this.args = args;
         }

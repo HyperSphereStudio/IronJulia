@@ -6,8 +6,8 @@ using JuliaTupleUtils = SpinorCompiler.Boot.JuliaTupleUtils;
 
 public partial struct Core {
      
-    public interface JTuple : Any{
-        public Any this[int index] { get; }
+    public interface JTuple : IAny{
+        public object this[int index] { get; }
         public int Length { get; }
         public object NetTupleValue { get; }
         public bool IsNTuple { get; }
@@ -20,7 +20,7 @@ public partial struct Core {
         public TT Value;
         public Tuple(){}
         public Tuple(TT tuple) => Value = tuple;
-        public Any this[int index] => (Any) Value[index]!;
+        public object this[int index] => Value[index]!;
         public int Length => Meta.TypeTuple.Types.Length;
         public object NetTupleValue => Value;
         public bool IsNTuple => Meta.IsNTuple;

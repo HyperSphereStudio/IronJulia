@@ -2,8 +2,8 @@ using IronJulia.CoreLib;
 
 public partial struct Core {
 
-    public class CodeInfo : Base.Any{
-        public Array<Base.Any, Vals.Int1, ValueTuple<Vals.Int1>> code;
+    public class CodeInfo : Base.IAny{
+        public Array<object, Vals.Int1, ValueTuple<Vals.Int1>> code;
         public Array<int, Vals.Int1, ValueTuple<Vals.Int1>> codelocs;
         public Array<LineInfoNode, Vals.Int1, ValueTuple<Vals.Int1>> linetable;
         public Type rettype;
@@ -13,15 +13,15 @@ public partial struct Core {
         
     }
 
-    public record LineInfoNode(Core.Module module, Base.Symbol method, Base.Symbol file, int inlined_at) : Base.Any;
-    public record GotoNode(Base.Int label) : Base.Any;
-    public record ReturnNode(Base.Any val) : Base.Any;
-    public record SlotNumber(Base.Int id) : Base.Any;
+    public record LineInfoNode(Core.Module module, Base.Symbol method, Base.Symbol file, int inlined_at) : Base.IAny;
+    public record GotoNode(Base.Int label) : Base.IAny;
+    public record ReturnNode(object val) : Base.IAny;
+    public record SlotNumber(Base.Int id) : Base.IAny;
 
-    public record QuoteNode(Base.Any value) : Base.Any;
-    public record GotoIfNot(Base.Int label, Core.SSAValue cond) : Base.Any;
-    public record SSAValue(Base.Int id) : Base.Any;
-    public record GlobalRef(Base.Symbol name, Core.Module mod) : Base.Any;
+    public record QuoteNode(object value) : Base.IAny;
+    public record GotoIfNot(Base.Int label, Core.SSAValue cond) : Base.IAny;
+    public record SSAValue(Base.Int id) : Base.IAny;
+    public record GlobalRef(Base.Symbol name, Core.Module mod) : Base.IAny;
 
 
     public enum Purity {

@@ -4,7 +4,15 @@ from .Numbers import numbers_list, signed_int_list, unsigned_int_list, floating_
 dir = os.path.dirname(os.path.abspath(__file__))
 file = open(os.path.join(dir, "Numbers.cs"), "w", encoding="utf-8")
 
-file.write("public partial struct Base {")
+file.write("""public partial struct Base {
+    public interface Number : IAny;
+    public interface Real : Number;
+
+    public interface AbstractFloat : Real;
+    public interface Integer : Real;
+    public interface Signed : Real;
+    public interface Unsigned : Real;
+""")
 
 def emit_number(jname, num: NumericType):
    conversions = ""

@@ -34,9 +34,9 @@ public static class Vals {
 
     private static readonly Dictionary<object, Type> ValMap = new();
     
-    public static Type GetFixedVal(Any value) => GetFixedVal(value, value.GetType());
+    public static Type GetFixedVal(object value) => GetFixedVal(value, value.GetType());
     
-    public static Type GetFixedVal(Any value, Type valueType) {
+    public static Type GetFixedVal(object value, Type valueType) {
         if (!ValMap.TryGetValue(value, out var t)) {
             //TODO: Make sure to check if its unmanaged or string type for now
             

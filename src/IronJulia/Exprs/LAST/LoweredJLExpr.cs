@@ -13,21 +13,21 @@ public static class LoweredJLExpr {
         return j;
     }
     
-    public interface ILoweredJLExpr : Base.Any, INodeVisitor<ILoweredJLExpr>, ICallsiteValue<ILoweredJLExpr, ILoweredJLExpr> {
+    public interface ILoweredJLExpr : Base.IAny, INodeVisitor<ILoweredJLExpr>, ICallsiteValue<ILoweredJLExpr, ILoweredJLExpr> {
         public Type ReturnType { get; set; }
         ILoweredJLExpr ICallsiteValue<ILoweredJLExpr, ILoweredJLExpr>.Value => this;
         Type ICallsiteValue<ILoweredJLExpr, ILoweredJLExpr>.Type => ReturnType;
     }
     
     public class Constant : ILoweredJLExpr {
-        private static readonly Dictionary<Base.Any, Constant> _constantCache = new();
+        private static readonly Dictionary<object, Constant> _constantCache = new();
         
-        public Base.Any Value;
+        public object Value;
         public Type ReturnType { get => Value.GetType(); set => throw new NotImplementedException(); }
-        private Constant(Base.Any value) => Value = value;
+        private Constant(object value) => Value = value;
 
-        public static Constant Create(Base.Any value) => _constantCache.TryGetValue(value, out var v) ? v : new(value);
-        public static Constant Create<T>(T value) where T: Base.Any => Create(jlapi.jl_box(value));
+        public static Constant Create(object value) => _constantCache.TryGetValue(value, out var v) ? v : new(value);
+        public static Constant Create<T>(T value) => Create(jlapi.jl_box(value));
         
         public uint? Visit(NonRecursiveGraphVisitor<ILoweredJLExpr> visit, NodeVisitorState<ILoweredJLExpr> state) => null;
 
@@ -39,7 +39,7 @@ public static class LoweredJLExpr {
             AddToCache(Base.Bool.False);
             AddToCache(Base.Nothing.Instance);
 
-            void AddToCache<T>(T value) where T: Base.Any{
+            void AddToCache<T>(T value){
                 var k = jlapi.jl_box(value);
                 _constantCache[k] = new(k);
             }
@@ -97,7 +97,7 @@ public static class LoweredJLExpr {
         
         internal For(Block parent) {
             Body = parent.CreateBlock();
-            State = parent.CreateVariable(typeof(Base.Any), "state");
+            State = parent.CreateVariable(typeof(object), "state");
             Iterable = parent.CreateBlock();
             Initialization = FunctionInvoke.Create(Base.iterate, NewCallsite(Iterable));
             IterateNext = FunctionInvoke.Create(Base.iterate, NewCallsite(Iterable, State));

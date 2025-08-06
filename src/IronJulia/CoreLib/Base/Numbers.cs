@@ -1,4 +1,12 @@
 public partial struct Base {
+    public interface Number : IAny;
+    public interface Real : Number;
+
+    public interface AbstractFloat : Real;
+    public interface Integer : Real;
+    public interface Signed : Real;
+    public interface Unsigned : Real;
+
     public readonly struct Int8(sbyte value) : Signed, IEquatable<Int8> {
         public readonly sbyte Value = value;
         

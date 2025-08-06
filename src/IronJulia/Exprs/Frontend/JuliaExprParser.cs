@@ -10,7 +10,7 @@ public class JuliaExprParser : JuliaParser, IAntlrErrorListener<IToken>, IAntlrE
     private string? _file;
     private bool _createLineNumberNodes = true;
     public const int DisplayLineCharWidth = 40;
-    private readonly ParseTreeProperty<Base.Any> _vals = new();
+    private readonly ParseTreeProperty<object> _vals = new();
     private readonly ParseTreeWalker _wk = new();
     
     public JuliaExprParser() : base(new CommonTokenStream(new JuliaLexer(null))) {
@@ -20,13 +20,13 @@ public class JuliaExprParser : JuliaParser, IAntlrErrorListener<IToken>, IAntlrE
         Lexer.AddErrorListener(this);
     }
 
-    public Base.Any Parse(string s, string? file = null, bool createLineNumberNodes = true) =>
+    public object Parse(string s, string? file = null, bool createLineNumberNodes = true) =>
         Parse(new AntlrInputStream(s), file, createLineNumberNodes);
 
-    public Base.Any Parse(FileInfo file, bool createLineNumberNodes = true) =>
+    public object Parse(FileInfo file, bool createLineNumberNodes = true) =>
         Parse(new AntlrFileStream(file.FullName), file.FullName, createLineNumberNodes);
 
-    public Base.Any Parse(BaseInputCharStream stream, string? file = null, bool createLineNumberNodes = true) {
+    public object Parse(BaseInputCharStream stream, string? file = null, bool createLineNumberNodes = true) {
         SetInput(stream);
         _file = file;
         _createLineNumberNodes = createLineNumberNodes;
@@ -111,8 +111,8 @@ public class JuliaExprParser : JuliaParser, IAntlrErrorListener<IToken>, IAntlrE
     
     
     
-    private Base.Any Get(IParseTree n) => _vals.Get(n);
-    private void Put(IParseTree n, Base.Any v) => _vals.Put(n, v);
+    private object Get(IParseTree n) => _vals.Get(n);
+    private void Put(IParseTree n, object v) => _vals.Put(n, v);
 
     public void VisitTerminal(ITerminalNode node) {}
     public void VisitErrorNode(IErrorNode node) {}
@@ -249,7 +249,7 @@ public class JuliaExprParser : JuliaParser, IAntlrErrorListener<IToken>, IAntlrE
     }
 
     public void ExitNameRef(NameRefContext ctx) {
-        Base.Any? v = null;
+        object? v = null;
         foreach (var name in IterateChildrenOfType<ITerminalNode>(ctx)) {
             var sym = (Base.Symbol) name.GetText();
             if (v == null)

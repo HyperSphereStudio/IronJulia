@@ -3,7 +3,7 @@ using System.Reflection;
 using IronJulia.CoreLib.Interop;
 
 public partial struct Core {
-    public interface Module : IBinding, Base.Any {
+    public interface Module : IBinding, Base.IAny {
         public Module? Parent { get; }
         Core.Module IBinding.Module => this;
         Type IBinding.BindingType => typeof(NetRuntimeNamespaceModule);
