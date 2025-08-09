@@ -5,10 +5,6 @@ public partial struct Base {
 
     public static class Meta {
 
-        public static LoweredJLExpr.ILoweredJLExpr Lower(object v) {
-            return null;
-        }
-        
         public static object MacroExpand1(Core.Module m, object v) {
             switch (v) {
                 case Expr ex:
@@ -34,15 +30,20 @@ public partial struct Base {
         }
 
         private static object ExpandMacro(Core.Module m, Core.SimpleVector<object> args) {
-            var cs = RuntimeJulianCallsite.Get();
-            for (var i = 2; i <= args.Count; i++) {
-                var v = args[i];
-                if (TryGetKeyArg(v, out var key, out var arg))
-                    cs.AddKeyArg(key.Value, new(arg));
-                else
-                    cs.AddArg(new(v));
+            var cs = JulianRuntimeCallsite.GetFromPool();
+            try {
+                for (var i = 2; i <= args.Count; i++) {
+                    var v = args[i];
+                    if (TryGetKeyArg(v, out var key, out var arg))
+                        cs.AddKeyArg(key.Value, arg);
+                    else
+                        cs.AddArg(v);
+                }
+                return ((Core.Function) m[(Symbol) args[1]]!).Invoke(cs)!;
             }
-            return ((Core.Function) m[(Symbol) args[1]]!).Invoke(cs)!;
+            finally {
+                JulianRuntimeCallsite.ReturnToPool(cs);
+            }
         }
         
     }

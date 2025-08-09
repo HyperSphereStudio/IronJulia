@@ -35,14 +35,14 @@ public partial struct Base {
             m_Base.AddBinding(ty.Name, new NetRuntimeType(ty, m_Base));
         }
         m_Base.AddBinding("println", println);
-        println.Methods.Add(new NetMethod(println, typeof(Console).GetMethod("WriteLine", BindingFlags.Public|BindingFlags.Static, [typeof(object)])!));
+        println.Methods.Add(Core.ConcreteMethod.FromInfo(typeof(Console).GetMethod("WriteLine", BindingFlags.Public|BindingFlags.Static, [typeof(object)])!));
 
         var @goto = new Core.Function("@goto", m_Base);
-        @goto.Methods.Add(new NetMethod(@goto, typeof(Base).GetMethod("goto", BindingFlags.Public|BindingFlags.Static)!));
+        @goto.Methods.Add(Core.ConcreteMethod.FromInfo(typeof(Base).GetMethod("goto", BindingFlags.Public|BindingFlags.Static)!));
         m_Base.AddBinding("@goto", @goto);
         
         var @label = new Core.Function("@label", m_Base);
-        @label.Methods.Add(new NetMethod(@label, typeof(Base).GetMethod("label", BindingFlags.Public|BindingFlags.Static)!));
+        @label.Methods.Add(Core.ConcreteMethod.FromInfo(typeof(Base).GetMethod("label", BindingFlags.Public|BindingFlags.Static)!));
         m_Base.AddBinding("@label", @label);
     }
 }

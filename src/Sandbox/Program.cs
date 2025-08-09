@@ -1,9 +1,6 @@
 ﻿using System.CodeDom.Compiler;
-using IronJulia.AST;
 using IronJulia.CoreLib;
-using IronJulia.CoreLib.Interop;
 using IronJulia.Parse;
-using static IronJulia.AST.LoweredJLExpr;
 
 //RangeTests();
 //ExprTests();
@@ -58,104 +55,6 @@ static void NativeArrayTests() {
     Console.WriteLine(arr);
     Console.WriteLine();
     
-    Console.WriteLine();
-    Console.WriteLine();
-}
-
-/*
-==== EXPR TEST ====
-begin
-    j = 1
-    @label top
-    i = 0
-    while i < 5
-        Test(i, 3, j)
-        i += 1
-    end
-    if j == 1
-        j = 2
-        @goto top
-    end
-    j
-end
-0 + 3 is 3. j=1
-1 + 3 is 4. j=1
-2 + 3 is 5. j=1
-3 + 3 is 6. j=1
-4 + 3 is 7. j=1
-0 + 3 is 3. j=2
-1 + 3 is 4. j=2
-2 + 3 is 5. j=2
-3 + 3 is 6. j=2
-4 + 3 is 7. j=2
-2
-*/
-static void ExprTests() {
-    Console.WriteLine("==== EXPR TEST ====");
-    //Expose the Net Metadata as a Julia Module
-    var cMod = NetType.GetOrCreateModuleForType(typeof(MyClass));
-    var blk = Block.Create();
-
-/*
-j = 1
-
-@label top
-i = 0
-
-while i < 5
-    PrintAdd(i, 3, j)
-    i += 1
-end
-
-if j == 1
-   j = 2
-   @goto top
-end
-
-MyBasicFieldExample = 5;       //setproperty!(MyClass, MyBasicFieldExample)
-println(MyBasicFieldExample)   
-j
-*/
-
-    var i = blk.CreateVariable(typeof(Base.Int), "i");
-    var j = blk.CreateVariable(typeof(Base.Int), "j");
-    var top = blk.CreateLabel("top");
-    
-    blk.Append(Assignment.Create(j, Constant.Create(new Base.Int(1))));  //j = 1
-    blk.Append(top);  //@label top
-    blk.Append(Assignment.Create(i, Constant.Create(new Base.Int(0))));  //i = 0
-    
-    var loop = blk.CreateWhile();
-  
-    loop.Condition.Append(
-        BinaryOperatorInvoke.Create(Base.op_LessThan, 
-        i, Constant.Create(new Base.Int(5))));  //i < 5
-
-    loop.Body.Append(FunctionInvoke.Create((Core.Function) cMod.getglobal("Test")!, 
-         NewCallsite(i, Constant.Create(new Base.Int(3)), j)));   //Test(i, 3, j)
-
-    loop.Body.Append(Assignment.Create(i, 
-        BinaryOperatorInvoke.Create(Base.op_Add, 
-            i, Constant.Create(new Base.Int(1))), true));  //i += 1
-    
-    blk.Append(loop);
-    
-    var ifStmt = blk.CreateConditional();
-    ifStmt.Condition!.Append(BinaryOperatorInvoke.Create(Base.op_Equality, 
-        j, Constant.Create(new Base.Int(1))));   //j == 1
-    ifStmt.Body.Append(Assignment.Create(j, Constant.Create(new Base.Int(2))));  //j = 2
-    ifStmt.Body.Append(Goto.Create(top)); 
-    
-    blk.Append(ifStmt);
-    blk.Append(SetProperty.Create(Constant.Create(cMod), "MyBasicBindingExample", Constant.Create(new Base.Int(5)))); //MyClass.MyBasicBindingExample = 5
-    var gp = GetProperty.Create(Constant.Create(cMod), "MyBasicBindingExample");
-    blk.Append(FunctionInvoke.Create(Base.println, NewCallsite(gp)));  //println(MyClass.MyBasicBindingExample)
-    blk.Append(j);
-    
-    blk.PrintJuliaString();
-
-    var itp = new LoweredASTInterpreter();
-    Console.WriteLine(itp.Interpret(blk, true));
     Console.WriteLine();
     Console.WriteLine();
 }

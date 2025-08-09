@@ -10,5 +10,12 @@ public static class ArrayUtils
         ref var tableRef = ref MemoryMarshal.GetArrayDataReference(ar);
         return ref Unsafe.Add(ref tableRef, (nint)index);
     }
-    
+
+    public static int SeqHashCode<T>(this T[] ar) {
+        var value = 0;
+        foreach (var t in ar) {
+            value = HashCode.Combine(t,value);
+        }
+        return value;
+    }
 }

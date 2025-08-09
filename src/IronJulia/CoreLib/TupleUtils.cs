@@ -5,15 +5,27 @@ using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Microsoft.Scripting.Utils;
+using SpinorCompiler.Utils;
 using DynamicMethod = System.Reflection.Emit.DynamicMethod;
 
 namespace SpinorCompiler.Boot;
 
 using Type = System.Type;
 
-public record struct TypeTuple(Type[] Types) {
+public readonly struct TypeTuple : IEquatable<TypeTuple>
+{
+    public readonly Type[] Types;
+    private readonly int _hash;
+
+    public TypeTuple(params Type[] types) {
+        Types = types;
+        foreach (var t in Types) {
+            _hash = HashCode.Combine(t, _hash);
+        }
+    }
+    
     public bool Equals(TypeTuple other) => Types.SequenceEqual(other.Types);
-    private readonly int _hash = Types.GetValueHashCode();
+
     public override int GetHashCode() => _hash;
 }
 
@@ -35,23 +47,23 @@ public static class JuliaTupleUtils {
     public static Core.Tuple<(T1, T2, T3, T4, T5, T6)> NewTuple<T1, T2, T3, T4, T5, T6>(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6) => new ((t1, t2, t3, t4, t5, t6));
     public static Core.Tuple<(T1, T2, T3, T4, T5, T6, T7)> NewTuple<T1, T2, T3, T4, T5, T6, T7>(T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6, T7 t7) => new ((t1, t2, t3, t4, t5, t6, t7));
 
-    public static Type GetTupleType(TypeTuple tupleOfTypes) {
-        if (!_tuples2type.TryGetValue(tupleOfTypes, out var tt)) {
-            tt = typeof(Core.Tuple<>).MakeGenericType(GetTupleNetType(tupleOfTypes.Types));
+    public static Type GetTupleType(Type[] tupleOfTypes) {
+        if (!_tuples2type.TryGetValue(new TypeTuple(tupleOfTypes), out var tt)) {
+            tt = typeof(Core.Tuple<>).MakeGenericType(GetTupleNetType(tupleOfTypes));
             RuntimeHelpers.RunClassConstructor(tt.TypeHandle);        //Sets the tuples2type stuff
         }
         return tt;
     }
 
-    public static Delegate GetTupleCtor(TypeTuple tupleOfTypes) {
-        if (!_tuplectors.TryGetValue(tupleOfTypes, out var mi)) {
-            mi = EmitTupleMaker(tupleOfTypes.Types, GetTupleNetType(tupleOfTypes));
-            _tuplectors[tupleOfTypes] = mi;
+    public static Delegate GetTupleCtor(Type[] tupleOfTypes) {
+        var tt = new TypeTuple(tupleOfTypes);
+        if (!_tuplectors.TryGetValue(tt, out var mi)) {
+            mi = EmitTupleMaker(tupleOfTypes, GetTupleNetType(tupleOfTypes));
+            _tuplectors[tt] = mi;
         }
         return mi;
     }
 
-    private static Type GetTupleNetType(TypeTuple types) => GetTupleNetType(types.Types);
     private static Type GetTupleNetType(Span<Type> types) {
         if (types.Length == 0)
             return typeof(ValueTuple);
@@ -79,8 +91,7 @@ public static class JuliaTupleUtils {
         }
     }
     
-    private static Delegate EmitTupleMaker(Type[] parameters, Type tupleType)
-    {
+    private static Delegate EmitTupleMaker(Type[] parameters, Type tupleType) {
         Type[] tptyargs = [tupleType];
         var jlType = typeof(Core.Tuple<>).MakeGenericType(tptyargs);
         var met = new DynamicMethod("CreateTuple",
@@ -99,16 +110,16 @@ public static class JuliaTupleUtils {
     
     public static Core.JTuple NewTuple(object[] values, Type tupleType) {
         RuntimeHelpers.RunClassConstructor(tupleType.TypeHandle);
-        return Unsafe.As<Core.JTuple>(GetTupleCtor(_type2tuples[tupleType]).DynamicInvoke(Unsafe.As<object?[]>(values)))!;
+        return Unsafe.As<Core.JTuple>(GetTupleCtor(_type2tuples[tupleType].Types).DynamicInvoke(Unsafe.As<object?[]>(values)))!;
     }
 
-    public static Core.JTuple NewTuple(object[] values, Type[] types) => NewTuple(values, GetTupleType(new(types)));
+    public static Core.JTuple NewTuple(object[] values, params Type[] types) => NewTuple(values, GetTupleType(types));
     
     public static Core.JTuple NewTuple(params object[] values) {
         var tybuffer = new Type[values.Length];
         for(int i = 0, n = values.Length; i < n; i++)
             tybuffer[i] = values[i].GetType();
-        return Unsafe.As<Core.JTuple>(GetTupleCtor(new TypeTuple(tybuffer)).DynamicInvoke(Unsafe.As<object?[]>(values)))!;    
+        return Unsafe.As<Core.JTuple>(GetTupleCtor(tybuffer).DynamicInvoke(Unsafe.As<object?[]>(values)))!;    
     }
     
     public static Span<T> NTupleSpan<T, K>(ref K t) where K: Core.JTuple {

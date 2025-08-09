@@ -69,7 +69,9 @@ public static class NetType {
         if (TryGetModuleFromType(t, out var m))
             return m!;
         var parent = t.DeclaringType != null ? GetOrCreateModuleForType(t.DeclaringType) : null;
-        return RegisterType2Module(t, new NetRuntimeType(t, parent));
+        var ty = new NetRuntimeType(t, parent);
+        RegisterType2Module(t, ty);
+        return ty;
     }
 }
 
@@ -96,11 +98,13 @@ public class NetRuntimeType : Core.Module {
     internal NetRuntimeType(Type source, Core.Module? parent) {
         Source = source;
         Parent = parent;
-        
+    }
+
+    internal void Init() {
         //Load certain .net methods into ecosystem that are hard to discover
-        foreach (var m in source.GetMethods(BindingFlags.Public | BindingFlags.Static)) {
+        foreach (var m in Source.GetMethods(BindingFlags.Public | BindingFlags.Static)) {
             if (m.IsSpecialName && NetOps.TryGetValue(m.Name, out var bop)) {
-                bop.AddMethod(new NetMethod(bop, m));
+                bop.AddMethod(Core.ConcreteMethod.FromInfo(m));
             }
         }
     }
@@ -129,7 +133,7 @@ public class NetRuntimeType : Core.Module {
             if(fattr.HasFlag(FieldAttributes.Static))
                 bf |= BindingFlags.Static;
 
-            List<MethodInfo?>? methods = null;
+            List<MethodInfo>? methods = null;
             
             foreach (var w in Source.GetMember(name, bf)) {
                 switch (w) {
@@ -150,7 +154,7 @@ public class NetRuntimeType : Core.Module {
                 var f = new Core.Function(name, this);
                 value = f;
                 foreach (var m in methods)
-                    f.Methods.Add(new NetMethod(f, m!));
+                    f.Methods.Add(Core.ConcreteMethod.FromInfo(m));
             }
             
             if(value != null)

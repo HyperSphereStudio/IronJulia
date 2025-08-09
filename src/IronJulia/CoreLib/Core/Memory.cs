@@ -118,20 +118,10 @@ public partial struct Core
         public void CopyTo(GenericMemoryScopedSlice<Kind, T, AddressSpace> dest) {
             if ((nuint)(nint)dest.Length < (nuint)(nint)Length)
                 throw new IndexOutOfRangeException();
-            MemoryUtils.Memmove(null, ref dest.NetPtr, ref NetPtr, (nuint)(nint)Length);
+            MemoryUtils.Memmove(ref dest.NetPtr, ref NetPtr, (nuint)(nint)Length);
         }
         
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe void Clear() {
-            if (RuntimeHelpers.IsReferenceOrContainsReferences<T>()) {
-#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
-                MemoryUtils.ClearWithReferences(null, ref Unsafe.As<T, IntPtr>(ref NetPtr), (nuint) length.Value * (nuint)(sizeof(T) / sizeof(nuint)));
-            }
-            else{
-                MemoryUtils.ClearWithoutReferences(null, ref Unsafe.As<T, byte>(ref NetPtr), (nuint) length.Value * (nuint)sizeof(T));
-            }
-#pragma warning restore CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
-        }
+        public void Clear() => MemoryUtils.Clear(ref NetPtr, (nuint) length.Value);
     }
 
     public interface GenericMemoryRef : IAny;
